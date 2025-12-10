@@ -8,18 +8,14 @@
     "scheme": "planeats",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
-
     "ios": {
       "supportsTablet": true,
       "icon": {
         "light": "./assets/images/icons/ios-light.png",
         "dark": "./assets/images/icons/ios-dark.png",
         "tinted": "./assets/images/icons/ios-tinted.png"
-        }
+      }
     },
-    
-    
-
     "android": {
       "adaptiveIcon": {
         "backgroundColor": "#ffffff",
@@ -47,7 +43,9 @@
             "backgroundColor": "#000000"
           }
         }
-      ]
+      ],
+      "expo-font",
+      "expo-web-browser"
     ],
     "experiments": {
       "typedRoutes": true,
