@@ -6,7 +6,7 @@ export default function Index() {
     <View style={styles.container}>
       
     
-      <Text style={styles.text}>Hello!!?</Text>
+      <Text style={styles.text}>Hello! & Welcome to Home Page</Text>
       <Link href={"/welcomeScreen"}>Go to Welcome Screen
       </Link>
     </View>
@@ -16,13 +16,13 @@ export default function Index() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#f1f", 
+    backgroundColor: "#ffffff", 
     
     alignItems: "center",
     justifyContent: "center",
   },
   text:{
-    color: "#fff",
+    color: "#000000",
     fontSize: 64,
     textAlign: "center",
     fontFamily: 'Bodoni',

@@ -4,7 +4,7 @@
     "slug": "planEats",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/icons/potColor.png",
+    "icon": "./assets/images/potColor2.png",
     "scheme": "planeats",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
@@ -18,7 +18,7 @@
     },
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#ffffff",
+        "backgroundColor": "#232323",
         "foregroundImage": "./assets/images/icons/adaptive-icon.png",
         "monochromeImage": "./assets/images/icons/adaptive-icon.png"
       },
@@ -27,17 +27,17 @@
     },
     "web": {
       "output": "static",
-      "favicon": "./assets/images/icons/potColor.svg"
+      "favicon": "./assets/images/icons/potColor.png"
     },
     "plugins": [
       "expo-router",
       [
         "expo-splash-screen",
         {
-          "image": "./assets/images/icons/potColor.png",
+          "image": "./assets/images/potColor2.png",
           "imageWidth": 200,
           "resizeMode": "contain",
-          "backgroundColor": "#ffffff",
+          "backgroundColor": "#4CAF50",
           "dark": {
             "image": "./assets/images/icons/potColor.png",
             "backgroundColor": "#000000"

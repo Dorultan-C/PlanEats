@@ -1,15 +1,15 @@
-import { Text, View, StyleSheet } from "react-native";
+import { Text, View, StyleSheet, Image } from "react-native";
 import { Link } from "expo-router";
 
-
+const imageSource = require("../assets/images/welcome-screen/get_started.png");
 
 export default function WelcomeScreen() {
   return (
     <View style={styles.container}>
+      <Image source={imageSource} style={{ width: 400, height: 350, marginTop: 20, }} />
+    <Text style={styles.text}>Welcome Screen</Text>
+        <Link href={".."} style={styles.button}>Home</Link>
       
-    
-        <Link href={".."} style={styles.button}>Go Back Home</Link>
-      <Text style={styles.text}>Welcome Screen</Text>
 
     </View>
   );
@@ -24,7 +24,7 @@ const styles = StyleSheet.create({
   },
   text:{
     color: "#000000",
-    fontSize: 64,
+    fontSize: 24,
     textAlign: "center",
     fontFamily: 'Bodoni',
     fontWeight: "bold",
@@ -34,7 +34,11 @@ const styles = StyleSheet.create({
     marginTop: 20,
     padding: 10,
     backgroundColor: "#fff",
-    borderRadius: 5,
+    borderRadius: 50,
+    borderWidth: 4,
+    borderColor: "#4CAF50",
+    fontWeight: "bold",
+    fontSize: 24,
   },
   buttonText:{
     color: "#f1f",
@@ -42,5 +46,10 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     textAlign: "center",
     fontFamily: 'Bodoni',
+  }, 
+  image:{
+    width: 400,
+    height: 350,
+    marginBottom: 20,
   }
 });
