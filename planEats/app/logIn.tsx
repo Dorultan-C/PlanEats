@@ -1,24 +1,23 @@
-import { Link, Stack } from "expo-router";
+import { Link } from "expo-router";
 import { Text, View, StyleSheet } from "react-native";
 
-export default function Index() {
+export default function logIn() {
   return (
+    <View style={styles.container}>
+      
     
-    <>
-     <Stack.Screen options={{ title: "404"}} />
-     <View style={styles.container}>
-       <Text style={styles.text}>Oops! Page not found!</Text>
-       <Link href={"./homePage"}>Go back to Home screen!
-       </Link>
+      <Text style={styles.text}>Hello! & Welcome to log in</Text>
+      <Link href={"../welcomeScreen"}>Go to Welcome Screen
+      </Link>
     </View>
-    </>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#ffffff",
+    backgroundColor: "#ffffff", 
+    
     alignItems: "center",
     justifyContent: "center",
   },
