@@ -1,6 +1,7 @@
 import { Text, View, StyleSheet, Image } from "react-native";
 import { Link } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
+import "../global.css"
 
 const imageSource = require("../assets/images/welcome-screen/get_started.png");
 
@@ -14,9 +15,9 @@ export default function WelcomeScreen() {
           style={styles.gradient}
         />
       </View>
-      <Text style={styles.text}>Get started</Text>
-      <Text style={styles.text}>Let <Text style={styles.textColor}>Plan Eats </Text>plan <br /> your meals with ease.</Text>
-      <Text style={styles.textSmall}>By signing up I accept the terms <br /> of use  and the data privacy policy.</Text>
+      <Text className="text-amber-400">Get started</Text>
+      <Text style={styles.text}>Let <Text style={styles.textColor}>Plan Eats </Text>plan  your meals with ease.</Text>
+      <Text style={styles.textSmall}>By signing up I accept the terms of use  and the data privacy policy.</Text>
 
 
       <Link href={"./signUp"} style={styles.button}> Sign up with email </Link>
