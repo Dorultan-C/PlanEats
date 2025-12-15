@@ -15,8 +15,10 @@ export default function WelcomeScreen() {
           style={styles.gradient}
         />
       </View>
-      <Text className="text-amber-400">Get started</Text>
-      <Text style={styles.text}>Let <Text style={styles.textColor}>Plan Eats </Text>plan  your meals with ease.</Text>
+      <Text className="text-black-600 text-4xl font-thin" style={{fontFamily: "Bodoni"}}>Get started</Text>
+
+      <Text className="text-black-400 text-3xl font-thin" style={{fontFamily: "Bodoni"}}>Let <Text className="text-black-400 text-3xl font-thin" style={{fontFamily: "Bodoni", color: "#4CAF50"}}>Plan Eats </Text>plan</Text>
+      <Text className="text-black-400 text-3xl font-bodoni" style={{fontFamily: "Bodoni"}}> your meals with ease.</Text>
       <Text style={styles.textSmall}>By signing up I accept the terms of use  and the data privacy policy.</Text>
 
 
