@@ -21,7 +21,7 @@ export default function SignUp() {
         className="flex-1 w-full justify-center items-center"
       >
         
-        <View className="flex-1 w-full max-w-md h-full max-h-[850px] bg-white rounded-3xl web:shadow-2xl overflow-hidden">
+        <View className="flex-1 w-full max-w-md h-full max-h-[950px] bg-white rounded-3xl web:shadow-2xl overflow-hidden">
           
           <ScrollView 
             contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', alignItems: 'center', paddingVertical: 20 }} 
