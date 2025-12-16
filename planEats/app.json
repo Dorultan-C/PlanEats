@@ -4,7 +4,7 @@
     "slug": "planEats",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/potColor2.png",
+    "icon": "./assets/images/icons/potColor-1200.png",
     "scheme": "planeats",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
@@ -27,7 +27,7 @@
     },
     "web": {
       "output": "static",
-      "favicon": "./assets/images/icons/potColor.png",
+      "favicon": "./assets/images/icons/logo.png",
       "bundler": "metro"
     },
     "plugins": [
@@ -35,12 +35,12 @@
       [
         "expo-splash-screen",
         {
-          "image": "./assets/images/potColor2.png",
+          "image": "./assets/images/icons/logo.png",
           "imageWidth": 200,
           "resizeMode": "contain",
           "backgroundColor": "#4CAF50",
           "dark": {
-            "image": "./assets/images/icons/potColor.png",
+            "image": "./assets/images/icons/logo.png",
             "backgroundColor": "#000000"
           }
         }
