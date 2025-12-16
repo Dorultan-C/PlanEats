@@ -33,7 +33,7 @@ export default function WelcomeScreen() {
         {/* pb-12: Bottom padding so buttons don't touch the edge */}
         {/* pt-4: Top padding to separate from image */}
         {/* gap-6: Adds even spacing between all items automatically */}
-        <View className="w-full items-center px-8 pb-12 pt-4 gap-6 bg-white">
+        <View className="w-full items-center px-8 pb-10 pt-4 gap-6 bg-white">
           
           {/* Header Text */}
           <View className="items-center">
@@ -51,7 +51,7 @@ export default function WelcomeScreen() {
           <View className="w-full items-center gap-4">
             <Link 
               href={"./signUp"} 
-              className="bg-primary w-full py-4 rounded-full text-white text-2xl font-bodoni text-center overflow-hidden shadow-sm"
+              className="bg-primary w-full py-4 rounded-full text-white text-3xl font-bodoni text-center overflow-hidden shadow-sm"
             > 
               Sign up with email 
             </Link>

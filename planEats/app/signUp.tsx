@@ -68,7 +68,7 @@ export default function SignUp() {
 
             {/* 3. SIGN UP BUTTON */}
             <TouchableOpacity className="w-full bg-primary rounded-full py-4 mt-8 shadow-sm active:opacity-90">
-              <Text className="text-white text-center text-2xl font-bodoni">
+              <Text className="text-white text-center text-3xl font-bodoni">
                 Sign up
               </Text>
             </TouchableOpacity>
@@ -108,7 +108,7 @@ export default function SignUp() {
             {/* Back to Login Link */}
             <View className="mt-8 flex-row">
                 <Text className="text-secondary-text font-bodoni text-lg">Already have an account? </Text>
-                <Link href="./logIn" className="text-primary font-bold font-bodoni text-lg">Log in</Link>
+                <Link href="./logIn" className="text-primary font-bodoni text-xl">Log in</Link>
             </View>
 
           </ScrollView>
