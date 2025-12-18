@@ -45,3 +45,9 @@ app-example
 # IDEs and editors
 .vscode/
 .idea/
+
+
+.env
+.env.local
+firebaseConfig.ts 
+.DS_Store

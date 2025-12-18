@@ -1,109 +1,115 @@
-import { View, Text, TextInput, Image, TouchableOpacity, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
-import { Link } from 'expo-router';
-import "../global.css"
+import { useState, useEffect } from 'react';
+import { View, Text, TextInput, Image, TouchableOpacity, ScrollView, KeyboardAvoidingView, Platform, Alert, ActivityIndicator } from 'react-native';
+import { Link, router } from 'expo-router';
+import { signInWithEmailAndPassword, GoogleAuthProvider, signInWithCredential } from 'firebase/auth';
+import { auth } from '../firebaseConfig';
+import * as WebBrowser from 'expo-web-browser';
+import { makeRedirectUri, useAuthRequest, ResponseType } from 'expo-auth-session';
+import "../global.css";
 
-// 1. ASSET IMPORTS
-// Using the same safe logo as the SignUp page
+// ASSETS
 const potImage = require("../assets/images/icons/logo.png");
-
-// Social Media Icons
 const googleIcon = require("../assets/images/socialMedia/google.png");
 const appleIcon = require("../assets/images/socialMedia/apple.png");
 const xIcon = require("../assets/images/socialMedia/x.png");
 const facebookIcon = require("../assets/images/socialMedia/facebook.png");
 
+// Initialize WebBrowser
+WebBrowser.maybeCompleteAuthSession();
+
 export default function LogIn() {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  // --- GOOGLE CONFIG ---
+  const [request, response, promptAsync] = useAuthRequest(
+    {
+      clientId: '818297580059-k560b8cgleoh60gsgbpgrgh8uhjie5sj.apps.googleusercontent.com', // Your Client ID
+      scopes: ['openid', 'profile', 'email'],
+      responseType: ResponseType.IdToken,
+      redirectUri: makeRedirectUri(),
+      usePKCE: false, // Critical fix for "code_challenge" error
+    },
+    {
+      authorizationEndpoint: 'https://accounts.google.com/o/oauth2/v2/auth',
+      tokenEndpoint: 'https://oauth2.googleapis.com/token',
+    }
+  );
+
+  // --- GOOGLE LISTENER ---
+  useEffect(() => {
+    if (response?.type === 'success') {
+      const { id_token } = response.params;
+      const credential = GoogleAuthProvider.credential(id_token);
+      setLoading(true);
+      signInWithCredential(auth, credential)
+        .then(() => {
+          router.replace('/homePage');
+        })
+        .catch((error) => Alert.alert("Login Error", error.message))
+        .finally(() => setLoading(false));
+    }
+  }, [response]);
+
+  // --- EMAIL LOGIN ---
+  const handleLogIn = async () => {
+    if (!email || !password) {
+      Alert.alert("Error", "Please enter both email and password.");
+      return;
+    }
+    setLoading(true);
+    try {
+      await signInWithEmailAndPassword(auth, email, password);
+      router.replace('/homePage');
+    } catch (error: any) {
+      Alert.alert("Login Failed", error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
-    // OUTER CONTAINER
     <View className="flex-1 justify-center items-center bg-gray-100 dark:bg-black">
-      
-      <KeyboardAvoidingView 
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-        className="flex-1 w-full justify-center items-center"
-      >
-        
-        {/* PHONE CARD CONTAINER */}
+      <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} className="flex-1 w-full justify-center items-center">
         <View className="flex-1 w-full max-w-md h-full max-h-[850px] bg-white rounded-3xl web:shadow-2xl overflow-hidden">
-          
-          <ScrollView 
-            contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', alignItems: 'center', paddingVertical: 20 }} 
-            showsVerticalScrollIndicator={false}
-            className="w-full px-8"
-          >
-
-            {/* 1. MAIN LOGO */}
+          <ScrollView contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', alignItems: 'center', paddingVertical: 20 }} showsVerticalScrollIndicator={false} className="w-full px-8">
+            
             <View className="items-center mb-10">
-               <Image 
-                 source={potImage} 
-                 className="w-40 h-40" 
-                 style={{ width: 160, height: 160 }} 
-                 resizeMode="contain" 
-               />
+               <Image source={potImage} className="w-40 h-40" style={{ width: 160, height: 160 }} resizeMode="contain" />
             </View>
 
-            {/* 2. FORM INPUTS */}
             <View className="w-full gap-4">
-              <TextInput 
-                placeholder="Email address"
-                placeholderTextColor="#9ca3af"
-                keyboardType="email-address"
-                autoCapitalize="none"
-                className="w-full border border-primary/40 rounded-full px-6 py-4 text-lg font-bodoni bg-white text-primary-text"
-              />
-              <TextInput 
-                placeholder="Password"
-                placeholderTextColor="#9ca3af"
-                secureTextEntry
-                className="w-full border border-primary/40 rounded-full px-6 py-4 text-lg font-bodoni bg-white text-primary-text"
-              />
+              <TextInput placeholder="Email address" value={email} onChangeText={setEmail} placeholderTextColor="#9ca3af" keyboardType="email-address" autoCapitalize="none" className="w-full border border-primary/40 rounded-full px-6 py-4 text-lg font-bodoni bg-white text-primary-text" />
+              <TextInput placeholder="Password" value={password} onChangeText={setPassword} placeholderTextColor="#9ca3af" secureTextEntry className="w-full border border-primary/40 rounded-full px-6 py-4 text-lg font-bodoni bg-white text-primary-text" />
             </View>
 
-            {/* 3. FORGOT PASSWORD LINK (Aligned Right) */}
             <View className="w-full items-end mt-3 pr-2">
-                <Link href="./forgotPassword" className="text-secondary-text font-bodoni text-sm opacity-80">
-                    Forgot password
-                </Link>
+                <Link href="./forgotPassword" className="text-secondary-text font-bodoni text-sm opacity-80">Forgot password</Link>
             </View>
 
-            {/* 4. LOG IN BUTTON */}
-            <TouchableOpacity className="w-full bg-primary rounded-full py-4 mt-8 shadow-sm active:opacity-90 active:scale-95 transition-all">
-              <Text className="text-white text-center text-3xl font-bodoni">
-                Log in
-              </Text>
+            <TouchableOpacity onPress={handleLogIn} disabled={loading} className={`w-full bg-primary rounded-full py-4 mt-8 shadow-sm ${loading ? 'opacity-70' : 'active:opacity-90'}`}>
+              {loading ? <ActivityIndicator color="#fff" /> : <Text className="text-white text-center text-2xl font-bodoni">Log in</Text>}
             </TouchableOpacity>
 
-            {/* 5. DIVIDER */}
             <View className="flex-row items-center w-full mt-10 mb-6">
               <View className="flex-1 h-[1px] bg-gray-300" />
-              <Text className="mx-4 text-gray-400 font-bodoni text-sm">
-                Or Log in with
-              </Text>
+              <Text className="mx-4 text-gray-400 font-bodoni text-sm">Or Log in with</Text>
               <View className="flex-1 h-[1px] bg-gray-300" />
             </View>
 
-            {/* 6. SOCIAL ICONS */}
             <View className="flex-row gap-8 justify-center items-center mb-4">
-              <TouchableOpacity>
-                 <Image source={googleIcon} className="w-10 h-10" resizeMode="contain" />
+              <TouchableOpacity disabled={!request} onPress={() => promptAsync()}>
+                <Image source={googleIcon} className="w-10 h-10" resizeMode="contain" />
               </TouchableOpacity>
-
-              <TouchableOpacity>
-                 <Image source={appleIcon} className="w-10 h-10" resizeMode="contain" />
-              </TouchableOpacity>
-
-              <TouchableOpacity>
-                 <Image source={xIcon} className="w-10 h-10" resizeMode="contain" />
-              </TouchableOpacity>
-
-              <TouchableOpacity>
-                 <Image source={facebookIcon} className="w-10 h-10" resizeMode="contain" />
-              </TouchableOpacity>
+              <TouchableOpacity><Image source={appleIcon} className="w-10 h-10" resizeMode="contain" /></TouchableOpacity>
+              <TouchableOpacity><Image source={xIcon} className="w-10 h-10" resizeMode="contain" /></TouchableOpacity>
+              <TouchableOpacity><Image source={facebookIcon} className="w-10 h-10" resizeMode="contain" /></TouchableOpacity>
             </View>
             
-            {/* 7. SIGN UP LINK */}
             <View className="mt-8 flex-row">
                 <Text className="text-secondary-text font-bodoni text-lg">Don&apos;t have an account? </Text>
-                <Link href="./signUp" className="text-primary font-bodoni text-xl">Sign up</Link>
+                <Link href="./signUp" className="text-primary font-bold font-bodoni text-lg">Sign up</Link>
             </View>
 
           </ScrollView>
