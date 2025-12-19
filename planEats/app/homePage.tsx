@@ -1,12 +1,11 @@
 import React, { useState } from 'react';
-import { View, Text, ScrollView, Image, TouchableOpacity, FlatList, Platform } from 'react-native';
-// 1. IMPORT FROM SAFE AREA CONTEXT
+import { View, Text, ScrollView, Image, TouchableOpacity, FlatList } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons, Feather } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import "../global.css"
 
-// --- 2. MOCK DATA (RESTORED) ---
+// --- MOCK DATA ---
 const DATES = [
   { id: '1', day: '01', weekday: 'Mon' },
   { id: '2', day: '02', weekday: 'Tue' },
@@ -58,13 +57,13 @@ export default function HomePage() {
   const [selectedDateId, setSelectedDateId] = useState('3'); 
 
   return (
-    <View className="flex-1 bg-gray-50 dark:bg-black">
+    // Background changed to 'secondaryBackground' (Light Gray from config)
+    <View className="flex-1 bg-secondaryBackground">
       
       {/* SECTION 1: HEADER & DATES */}
-      {/* 3. USE SAFE AREA WITH EDGES PROP */}
-      <SafeAreaView edges={['top']} className="bg-white pt-2 pb-6 rounded-b-[40px] shadow-sm z-20">
+      <SafeAreaView edges={['top']} className="bg-primaryBackground pt-2 pb-6 rounded-b-[40px] shadow-sm z-20">
         <View className="items-center mt-2 mb-6">
-          <Text className="text-gray-400 font-bodoni text-lg">03 November 2025</Text>
+          <Text className="text-secondaryText font-bodoni text-lg">03 November 2025</Text>
         </View>
 
         {/* Date Carousel */}
@@ -80,12 +79,14 @@ export default function HomePage() {
                 return (
                 <TouchableOpacity 
                     onPress={() => setSelectedDateId(item.id)}
-                    className={`items-center justify-center w-16 h-20 mx-2 rounded-3xl ${isActive ? 'bg-[#4CAF50] shadow-lg scale-110' : 'bg-transparent'}`}
+                    // Active: bg-primary (Green), Inactive: Transparent
+                    className={`items-center justify-center w-16 h-20 mx-2 rounded-3xl ${isActive ? 'bg-primary shadow-lg scale-110' : 'bg-transparent'}`}
                 >
-                    <Text className={`text-xs mb-1 font-bodoni ${isActive ? 'text-white' : 'text-gray-400'}`}>
+                    {/* Active Text: primaryBackground (White), Inactive: secondaryText (Gray) */}
+                    <Text className={`text-xs mb-1 font-bodoni ${isActive ? 'text-primaryBackground' : 'text-secondaryText'}`}>
                     {item.weekday}
                     </Text>
-                    <Text className={`text-2xl font-bold font-bodoni ${isActive ? 'text-white' : 'text-gray-300'}`}>
+                    <Text className={`text-2xl font-bold font-bodoni ${isActive ? 'text-primaryBackground' : 'text-gray-300'}`}>
                     {item.day}
                     </Text>
                 </TouchableOpacity>
@@ -102,7 +103,7 @@ export default function HomePage() {
         showsVerticalScrollIndicator={false}
       >
         {MEALS.map((meal) => (
-          <View key={meal.id} className="flex-row bg-white rounded-3xl mb-5 overflow-hidden shadow-sm h-36 border border-gray-100">
+          <View key={meal.id} className="flex-row bg-primaryBackground rounded-3xl mb-5 overflow-hidden shadow-sm h-36 border border-secondaryBackground">
             
             {/* Left Side: Text Info */}
             <View className="flex-1 p-4 justify-between">
@@ -110,27 +111,28 @@ export default function HomePage() {
               {/* Top Row: Time & Checkbox */}
               <View className="flex-row items-center justify-between">
                 <View className="flex-row items-center gap-2">
-                    <View className="bg-gray-100 px-2 py-1 rounded-md">
-                        <Text className="text-gray-500 text-xs font-bold">{meal.time}</Text>
+                    <View className="bg-secondaryBackground px-2 py-1 rounded-md">
+                        <Text className="text-secondaryText text-xs font-bold">{meal.time}</Text>
                     </View>
-                    <Text className="text-gray-400 text-xs">{meal.type}</Text>
+                    <Text className="text-secondaryText text-xs">{meal.type}</Text>
                 </View>
-                {/* Checkbox Circle */}
-                <View className="w-5 h-5 rounded-full border-2 border-[#4CAF50]" />
+                {/* Checkbox Circle (Border Primary) */}
+                <View className="w-5 h-5 rounded-full border-2 border-primary" />
               </View>
 
-              {/* Meal Title */}
-              <Text className="text-gray-800 font-bodoni font-bold text-lg leading-5 pr-1" numberOfLines={2}>
+              {/* Meal Title (Primary Text) */}
+              <Text className="text-primaryText font-bodoni font-bold text-lg leading-5 pr-1" numberOfLines={2}>
                 {meal.title}
               </Text>
 
               {/* Bottom Row: Prep Time & Calories */}
               <View className="flex-row items-center justify-between mt-1">
-                <View className="bg-[#4CAF50] px-2 py-1 rounded-full flex-row items-center gap-1">
+                {/* Badge: bg-primary */}
+                <View className="bg-primary px-2 py-1 rounded-full flex-row items-center gap-1">
                    <Feather name="clock" size={10} color="white" />
-                   <Text className="text-white text-[10px] font-bold">{meal.prepTime}</Text>
+                   <Text className="text-primaryBackground text-[10px] font-bold">{meal.prepTime}</Text>
                 </View>
-                <Text className="text-gray-400 text-xs font-bold">{meal.calories}</Text>
+                <Text className="text-secondaryText text-xs font-bold">{meal.calories}</Text>
               </View>
             </View>
 
@@ -147,13 +149,15 @@ export default function HomePage() {
       </ScrollView>
 
       {/* SECTION 3: BOTTOM NAVIGATION */}
-      <View className="absolute bottom-8 left-6 right-6 h-20 bg-white rounded-[40px] shadow-2xl shadow-black/10 flex-row items-center justify-around px-2 border border-gray-100">
+      <View className="absolute bottom-8 left-6 right-6 h-20 bg-primaryBackground rounded-[40px] shadow-2xl shadow-black/10 flex-row items-center justify-around px-2 border border-secondaryBackground">
         
         {/* Home (Active) */}
         <TouchableOpacity className="items-center justify-center">
             <View className="items-center justify-center">
+                {/* Icons typically need Hex codes for the 'color' prop, so we keep the hex for the Icon itself, 
+                    but we use text-primary for the label */}
                 <Ionicons name="home" size={26} color="#4CAF50" /> 
-                <Text className="text-[#4CAF50] text-[10px] font-bold mt-1">Home</Text>
+                <Text className="text-primary text-[10px] font-bold mt-1">Home</Text>
             </View>
         </TouchableOpacity>
 
@@ -161,15 +165,18 @@ export default function HomePage() {
         <TouchableOpacity className="items-center justify-center opacity-40">
              <View className="items-center justify-center">
                 <Feather name="shopping-cart" size={24} color="#4CAF50" />
-                <Text className="text-[#4CAF50] text-[10px] font-bold mt-1">Shopping</Text>
+                <Text className="text-primary text-[10px] font-bold mt-1">Shopping</Text>
             </View>
         </TouchableOpacity>
 
-        {/* Menu */}
-        <TouchableOpacity className="items-center justify-center opacity-40">
+        {/* Menu - NOW LINKS TO MENU PAGE */}
+        <TouchableOpacity 
+            className="items-center justify-center opacity-40"
+            onPress={() => router.push('./menu')}
+        >
              <View className="items-center justify-center">
                 <Ionicons name="menu" size={28} color="#4CAF50" />
-                <Text className="text-[#4CAF50] text-[10px] font-bold mt-1">Menu</Text>
+                <Text className="text-primary text-[10px] font-bold mt-1">Menu</Text>
             </View>
         </TouchableOpacity>
 

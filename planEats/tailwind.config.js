@@ -16,7 +16,7 @@ module.exports = {
         alternate: '#F44336',
         primaryText: '#212121',
         secondaryText: '#757575',
-        primaryBackground: '#121212',
+        primaryBackground: '#FFFFFF',
         secondaryBackground: '#F5F5F5',
       },
     },
