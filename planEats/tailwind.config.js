@@ -18,6 +18,7 @@ module.exports = {
         secondaryText: '#757575',
         primaryBackground: '#FFFFFF',
         secondaryBackground: '#F5F5F5',
+        transparent:'#F5F5F5',
       },
     },
   },

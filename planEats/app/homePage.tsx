@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
 import { View, Text } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { LinearGradient } from 'expo-linear-gradient';
 import DateCarousel from '../components/DateCarousel'; 
 import MealList from '../components/MealList';
 import BottomNavBar from '../components/BottomNavBar';
 import "../global.css"
 
-// --- MOCK DATA ---
+// --- 1. RESTORED DATA ARRAYS ---
 const DATES = [
   { id: '1', day: '01', weekday: 'Mon' },
   { id: '2', day: '02', weekday: 'Tue' },
@@ -52,6 +53,24 @@ const MEALS = [
     calories: '250 kcal',
     image: 'https://images.unsplash.com/photo-1556679343-c7306c1976bc?w=400',
   },
+  {
+    id: '5',
+    time: '19:30',
+    type: 'Dinner',
+    title: 'Grilled Salmon with Asparagus',
+    prepTime: '25 min',
+    calories: '520 kcal',
+    image: 'https://images.unsplash.com/photo-1467003909585-2f8a7270028d?w=400',
+  },
+  {
+    id: '6',
+    time: '21:00',
+    type: 'Late Snack',
+    title: 'Greek Yogurt with Honey',
+    prepTime: '5 min',
+    calories: '180 kcal',
+    image: 'https://images.unsplash.com/photo-1488477181946-6428a0291777?w=400',
+  },
 ];
 
 export default function HomePage() {
@@ -61,7 +80,6 @@ export default function HomePage() {
     <View className="flex-1 bg-secondaryBackground">
       
       {/* SECTION 1: HEADER & DATES */}
-      {/* Added 'w-full max-w-xl self-center' to keep it aligned with the meal list on Web */}
       <SafeAreaView 
         edges={['top']} 
         className="bg-primaryBackground pt-2 pb-6 rounded-b-[40px] shadow-sm z-20 w-full max-w-xl self-center"
@@ -80,7 +98,21 @@ export default function HomePage() {
       {/* SECTION 2: MEAL LIST */}
       <MealList meals={MEALS} />
 
-      {/* SECTION 3: BOTTOM NAVIGATION */}
+      {/* SECTION 3: FADE OVERLAY */}
+      <LinearGradient
+        // IMPORTANT: Make sure this second color matches your background!
+        colors={['rgba(245, 245, 245, 0)', '#F5F5F5']} 
+        style={{
+          position: 'absolute',
+          left: 0,
+          right: 0,
+          bottom: 70,
+          height: 100, // Height of the fade effect
+        }}
+        pointerEvents="none"
+      />
+
+      {/* SECTION 4: BOTTOM NAVIGATION */}
       <BottomNavBar activePage="Home" />
 
     </View>
