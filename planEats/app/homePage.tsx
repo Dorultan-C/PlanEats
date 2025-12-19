@@ -1,13 +1,14 @@
 import React, { useState } from 'react';
-import { View, Text } from 'react-native';
+import { View, Text, TouchableOpacity, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
+import DateTimePicker from '@react-native-community/datetimepicker'; 
 import DateCarousel from '../components/DateCarousel'; 
 import MealList from '../components/MealList';
 import BottomNavBar from '../components/BottomNavBar';
 import "../global.css"
 
-// --- 1. RESTORED DATA ARRAYS ---
+// --- MOCK DATA ---
 const DATES = [
   { id: '1', day: '01', weekday: 'Mon' },
   { id: '2', day: '02', weekday: 'Tue' },
@@ -75,6 +76,32 @@ const MEALS = [
 
 export default function HomePage() {
   const [selectedDateId, setSelectedDateId] = useState('3'); 
+  
+  // 2. NEW STATE FOR DATE PICKER
+  const [date, setDate] = useState(new Date()); // Defaults to NOW
+  const [showPicker, setShowPicker] = useState(false);
+
+  // Helper to format date like "03 November 2025"
+  const formatDate = (rawDate: Date) => {
+    return rawDate.toLocaleDateString('en-GB', {
+      day: '2-digit',
+      month: 'long',
+      year: 'numeric',
+    });
+  };
+
+  const onChange = (event: any, selectedDate?: Date) => {
+    // On Android, the picker closes automatically. 
+    // On iOS, we might want to keep it open or handle differently, 
+    // but this logic works for both to set the date.
+    if (Platform.OS === 'android') {
+      setShowPicker(false);
+    }
+    
+    if (selectedDate) {
+      setDate(selectedDate);
+    }
+  };
 
   return (
     <View className="flex-1 bg-secondaryBackground">
@@ -85,7 +112,25 @@ export default function HomePage() {
         className="bg-primaryBackground pt-2 pb-6 rounded-b-[40px] shadow-sm z-20 w-full max-w-xl self-center"
       >
         <View className="items-center mt-2 mb-6">
-          <Text className="text-secondaryText font-bodoni text-lg">03 November 2025</Text>
+          {/* 3. CLICKABLE DATE TEXT */}
+          <TouchableOpacity onPress={() => setShowPicker(!showPicker)}>
+            <Text className="text-primaryText font-bodoni text-2xl ">
+                {formatDate(date)}
+            </Text>
+          </TouchableOpacity>
+
+          {/* 4. THE ACTUAL PICKER (Hidden by default) */}
+          {showPicker && (
+            <DateTimePicker
+              testID="dateTimePicker"
+              value={date}
+              mode="date"
+              display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+              onChange={onChange}
+              // iOS-specific style tweaks could go here
+              style={{ width: 320, backgroundColor: "white" }} 
+            />
+          )}
         </View>
 
         <DateCarousel 
@@ -100,14 +145,13 @@ export default function HomePage() {
 
       {/* SECTION 3: FADE OVERLAY */}
       <LinearGradient
-        // IMPORTANT: Make sure this second color matches your background!
         colors={['rgba(245, 245, 245, 0)', '#F5F5F5']} 
         style={{
           position: 'absolute',
           left: 0,
           right: 0,
-          bottom: 70,
-          height: 100, // Height of the fade effect
+          bottom: 70, 
+          height: 100, 
         }}
         pointerEvents="none"
       />
