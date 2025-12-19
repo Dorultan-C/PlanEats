@@ -5,15 +5,9 @@ import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics'; 
 import { format, addDays, startOfDay, isSameDay } from 'date-fns';
 
-// 🎨 THEME CONFIG
-const THEME = {
-  primary: '#4CAF50',       
-  primaryLight: '#81C784',  
-  textDark: '#212121',      
-  textGray: '#757575',      
-};
+// 🎨 COLORS
+const ACTIVE_GRADIENT = ['#81C784', '#4CAF50'] as const;
 
-// 🗓️ DATA GENERATION (+/- 60 Days)
 const GENERATE_DAYS = 60; 
 const START_INDEX = GENERATE_DAYS / 2;
 
@@ -26,7 +20,7 @@ const generateDates = () => {
       id: i.toString(),
       date: date,
       dayName: format(date, 'EEE'), 
-      dayNumber: format(date, 'd'), 
+      dayNumber: format(date, 'dd'), 
     });
   }
   return dates;
@@ -34,7 +28,7 @@ const generateDates = () => {
 
 interface DateCarouselProps {
   onDateSelected?: (date: Date) => void;
-  selectedDate?: Date; // ✅ NEW PROP: Listen for outside changes
+  selectedDate?: Date; 
 }
 
 export default function DateCarousel({ onDateSelected, selectedDate }: DateCarouselProps) {
@@ -43,26 +37,21 @@ export default function DateCarousel({ onDateSelected, selectedDate }: DateCarou
   const [currentIndex, setCurrentIndex] = useState(START_INDEX);
   const ref = useRef<ICarouselInstance>(null);
 
-  // 📐 Layout: Exactly 5 items per screen
   const itemWidth = width / 5;
 
-  // ✅ THE FIX: Watch for external date changes (e.g. from DatePicker)
   useEffect(() => {
     if (selectedDate) {
-      // Find the index of the selected date in our data array
       const index = data.findIndex(item => isSameDay(item.date, selectedDate));
-      
-      // If found and it's not the current one, scroll to it!
       if (index !== -1 && index !== currentIndex) {
         ref.current?.scrollTo({ index, animated: true });
         setCurrentIndex(index);
       }
     }
-  }, [selectedDate]); // <--- Runs whenever 'selectedDate' changes
+  }, [selectedDate]); 
 
   return (
     <View 
-      className="w-full h-32 justify-center mt-4 bg-transparent"
+      className="w-full h-32 justify-center mt-4 bg-primaryBackground" // Ensure bg is transparent here
       onLayout={(e) => setWidth(e.nativeEvent.layout.width)}
     >
       {width > 0 && (
@@ -74,61 +63,65 @@ export default function DateCarousel({ onDateSelected, selectedDate }: DateCarou
           style={{ width: width, justifyContent: 'center', alignItems: 'center' }}
           data={data}
           defaultIndex={START_INDEX}
-          
           mode="parallax"
           modeConfig={{
-            parallaxScrollingScale: 0.85, 
-            parallaxScrollingOffset: 8,  
+            parallaxScrollingScale: 1, // Slightly larger scale for inactive items
+            parallaxScrollingOffset: 8, // Increases spacing between items
           }}
-          
           onSnapToItem={(index) => {
             setCurrentIndex(index);
             const date = data[index].date;
-            
-            if (Platform.OS !== 'web') {
-              Haptics.selectionAsync();
-            }
-            // Only fire the event if the date actually changed to avoid infinite loops
-            if (onDateSelected) {
-              onDateSelected(date);
-            }
+            if (Platform.OS !== 'web') Haptics.selectionAsync();
+            if (onDateSelected) onDateSelected(date);
           }}
-          
           renderItem={({ item, index }) => {
             const isActive = index === currentIndex;
 
             return (
               <TouchableWithoutFeedback
-                onPress={() => {
-                  ref.current?.scrollTo({ index, animated: true });
-                }}
+                onPress={() => ref.current?.scrollTo({ index, animated: true })}
               >
-                <View className="items-center justify-center h-full">
+                {/* CONTAINER: centers the card within the carousel slot */}
+                <View className="items-center justify-center h-full"> 
+                  
                   {isActive ? (
+                    // ✅ ACTIVE STATE: Green Pill
                     <LinearGradient
-                      colors={[THEME.primaryLight, THEME.primary]}
-                      className="items-center justify-center w-14 h-20 rounded-[24px]"
+                      colors={ACTIVE_GRADIENT}
+                      // 'w-16 h-24' defines the size. 'rounded-full' makes it a pill.
+                      className="items-center justify-center w-20 h-24 rounded-full"
                       style={{
-                        shadowColor: THEME.primary,
+                        borderRadius: 50,
+                        shadowColor: '#4CAF50',
                         shadowOffset: { width: 0, height: 4 },
-                        shadowOpacity: 0.3,
-                        shadowRadius: 5,
-                        elevation: 6,
+                        shadowOpacity: 0.4,
+                        shadowRadius: 6,
+                        elevation: 8,
                       }}
                     >
-                      <Text className="text-xs font-bodoni text-white opacity-90 mb-0.5 uppercase tracking-wider">
+                      <Text className="text-2xl font-bodoni text-primaryBackground mb-1 tracking-wider">
                         {item.dayName}
                       </Text>
-                      <Text className="text-2xl font-bodoni text-white font-bold">
+                      <Text className="text-2xl font-bodoni text-primaryBackground font-bold">
                         {item.dayNumber}
                       </Text>
                     </LinearGradient>
                   ) : (
-                    <View className="items-center justify-center w-full h-full bg-transparent">
-                      <Text className="text-[10px] font-bodoni text-secondaryText mb-1 uppercase tracking-wider">
+                    // ✅ INACTIVE STATE: White Rounded Card
+                    <View 
+                      className="items-center justify-center w-12 h-16 bg-primaryBackground rounded-2xl border border-gray-100"
+                      style={{
+                        shadowColor: '#000',
+                        shadowOffset: { width: 0, height: 2 },
+                        shadowOpacity: 0.05,
+                        shadowRadius: 4,
+                        elevation: 2,
+                      }}
+                    >
+                      <Text className="text-[12px] font-bodoni text-secondaryText mb-1 tracking-wider">
                         {item.dayName}
                       </Text>
-                      <Text className="text-lg font-bodoni text-primaryText opacity-60">
+                      <Text className="text-lg font-bodoni text-primaryText opacity-80">
                         {item.dayNumber}
                       </Text>
                     </View>
