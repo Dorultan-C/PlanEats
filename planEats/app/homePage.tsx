@@ -101,7 +101,7 @@ export default function HomePage() {
         <View className="items-center mt-2 mb-2">
           {/* Date Picker Trigger */}
           <TouchableOpacity onPress={() => setShowPicker(!showPicker)}>
-            <Text className="text-secondaryText font-bodoni text-lg underline decoration-dotted">
+            <Text className="text-primaryText font-bodoni text-2xl ">
                 {formatDate(date)}
             </Text>
           </TouchableOpacity>
