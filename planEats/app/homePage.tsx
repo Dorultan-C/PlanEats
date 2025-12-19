@@ -1,22 +1,14 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, Platform } from 'react-native';
+import { View, Text, TouchableOpacity, Platform, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import DateTimePicker from '@react-native-community/datetimepicker'; 
-import DateCarousel from '../components/DateCarousel'; 
+import DateCarousel from '../components/DateCarousel'; // ✅ Using the new component
 import MealList from '../components/MealList';
 import BottomNavBar from '../components/BottomNavBar';
-import "../global.css"
+import "../global.css";
 
-// --- MOCK DATA ---
-const DATES = [
-  { id: '1', day: '01', weekday: 'Mon' },
-  { id: '2', day: '02', weekday: 'Tue' },
-  { id: '3', day: '03', weekday: 'Wed' }, 
-  { id: '4', day: '04', weekday: 'Thu' },
-  { id: '5', day: '05', weekday: 'Fri' },
-];
-
+// --- MEAL DATA ---
 const MEALS = [
   {
     id: '1',
@@ -75,13 +67,10 @@ const MEALS = [
 ];
 
 export default function HomePage() {
-  const [selectedDateId, setSelectedDateId] = useState('3'); 
-  
-  // 2. NEW STATE FOR DATE PICKER
-  const [date, setDate] = useState(new Date()); // Defaults to NOW
+  const [date, setDate] = useState(new Date()); 
   const [showPicker, setShowPicker] = useState(false);
 
-  // Helper to format date like "03 November 2025"
+  // Helper for Top Date Text
   const formatDate = (rawDate: Date) => {
     return rawDate.toLocaleDateString('en-GB', {
       day: '2-digit',
@@ -90,54 +79,51 @@ export default function HomePage() {
     });
   };
 
-  const onChange = (event: any, selectedDate?: Date) => {
-    // On Android, the picker closes automatically. 
-    // On iOS, we might want to keep it open or handle differently, 
-    // but this logic works for both to set the date.
-    if (Platform.OS === 'android') {
-      setShowPicker(false);
-    }
-    
-    if (selectedDate) {
-      setDate(selectedDate);
-    }
+  const onDateChange = (event: any, selectedDate?: Date) => {
+    if (Platform.OS === 'android') setShowPicker(false);
+    if (selectedDate) setDate(selectedDate);
+  };
+
+  // ✅ New Handler for the Animated Carousel
+  const handleCarouselSelect = (selectedDate: Date) => {
+    setDate(selectedDate);
+    // Logic to filter MEALS based on selectedDate would go here
   };
 
   return (
     <View className="flex-1 bg-secondaryBackground">
       
-      {/* SECTION 1: HEADER & DATES */}
+      {/* SECTION 1: HEADER */}
       <SafeAreaView 
         edges={['top']} 
         className="bg-primaryBackground pt-2 pb-6 rounded-b-[40px] shadow-sm z-20 w-full max-w-xl self-center"
       >
-        <View className="items-center mt-2 mb-6">
-          {/* 3. CLICKABLE DATE TEXT */}
+        <View className="items-center mt-2 mb-2">
+          {/* Date Picker Trigger */}
           <TouchableOpacity onPress={() => setShowPicker(!showPicker)}>
-            <Text className="text-primaryText font-bodoni text-2xl ">
+            <Text className="text-secondaryText font-bodoni text-lg underline decoration-dotted">
                 {formatDate(date)}
             </Text>
           </TouchableOpacity>
 
-          {/* 4. THE ACTUAL PICKER (Hidden by default) */}
           {showPicker && (
             <DateTimePicker
               testID="dateTimePicker"
               value={date}
               mode="date"
               display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-              onChange={onChange}
-              // iOS-specific style tweaks could go here
-              style={{ width: 320, backgroundColor: "white" }} 
+              onChange={onDateChange}
+              style={{ width: 520, backgroundColor: "white" }} 
             />
           )}
         </View>
 
-        <DateCarousel 
-            dates={DATES}
-            selectedId={selectedDateId}
-            onSelect={setSelectedDateId}
-        />
+        {/* ✅ UPDATED CAROUSEL INTEGRATION */}
+        {/* We removed 'dates', 'selectedId' and replaced 'onSelect' with 'onDateSelected' */}
+        <View className="w-full h-auto mt-5"> 
+          <DateCarousel onDateSelected={handleCarouselSelect}selectedDate={date} />
+        </View>
+        
       </SafeAreaView>
 
       {/* SECTION 2: MEAL LIST */}
