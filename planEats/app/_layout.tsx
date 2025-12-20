@@ -65,6 +65,7 @@ export default function RootLayout() {
       <Stack.Screen name="signUp" />
       <Stack.Screen name="forgotPassword" />
       <Stack.Screen name="menu" /> 
+      <Stack.Screen name="CreateRecipe" />
     </Stack>
   );
 }

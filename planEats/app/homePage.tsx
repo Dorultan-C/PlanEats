@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, Platform, ScrollView } from 'react-native';
+import { View, Text, TouchableOpacity, Platform, } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import DateTimePicker from '@react-native-community/datetimepicker'; 
-import DateCarousel from '../components/DateCarousel'; // ✅ Using the new component
+import { Ionicons } from '@expo/vector-icons'; // ✅ Import Icons
+import { useNavigation } from '@react-navigation/native'; // ✅ Import Navigation Hook
+import DateCarousel from '../components/DateCarousel'; 
 import MealList from '../components/MealList';
 import BottomNavBar from '../components/BottomNavBar';
 import "../global.css";
@@ -69,6 +71,9 @@ const MEALS = [
 export default function HomePage() {
   const [date, setDate] = useState(new Date()); 
   const [showPicker, setShowPicker] = useState(false);
+  
+  // ✅ Initialize Navigation
+  const navigation = useNavigation(); 
 
   // Helper for Top Date Text
   const formatDate = (rawDate: Date) => {
@@ -84,7 +89,7 @@ export default function HomePage() {
     if (selectedDate) setDate(selectedDate);
   };
 
-  // ✅ New Handler for the Animated Carousel
+  // Handler for the Animated Carousel
   const handleCarouselSelect = (selectedDate: Date) => {
     setDate(selectedDate);
     // Logic to filter MEALS based on selectedDate would go here
@@ -96,12 +101,21 @@ export default function HomePage() {
       {/* SECTION 1: HEADER */}
       <SafeAreaView 
         edges={['top']} 
-        className="bg-primaryBackground pt-2 pb-6 rounded-b-[40px] shadow-sm z-20 w-full max-w-xl self-center"
+        className="bg-primaryBackground pt-2 pb-6 rounded-b-[40px] shadow-sm z-20 w-full max-w-xl self-center relative"
       >
+        
+        {/* ✅ FLOATING ACTION BUTTON (Added here) */}
+        <TouchableOpacity 
+          className="absolute right-4 top-16 bg-secondary w-20 h-20 rounded-full items-center justify-center shadow-lg z-50"
+          onPress={() => (navigation as any).navigate('CreateRecipe')}
+        >
+          <Ionicons name="add" size={30} color="white" />
+        </TouchableOpacity>
+
         <View className="items-center mt-2 mb-2">
           {/* Date Picker Trigger */}
           <TouchableOpacity onPress={() => setShowPicker(!showPicker)}>
-            <Text className="text-primaryText font-bodoni text-2xl ">
+            <Text className="text-primaryText font-bodoni text-xl ">
                 {formatDate(date)}
             </Text>
           </TouchableOpacity>
@@ -118,10 +132,9 @@ export default function HomePage() {
           )}
         </View>
 
-        {/* ✅ UPDATED CAROUSEL INTEGRATION */}
-        {/* We removed 'dates', 'selectedId' and replaced 'onSelect' with 'onDateSelected' */}
+        {/* Carousel Integration */}
         <View className="w-full h-auto mt-5"> 
-          <DateCarousel onDateSelected={handleCarouselSelect}selectedDate={date} />
+          <DateCarousel onDateSelected={handleCarouselSelect} selectedDate={date} />
         </View>
         
       </SafeAreaView>
