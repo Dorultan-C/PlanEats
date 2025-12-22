@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, Image, FlatList, TouchableOpacity } from 'react-native';
 import { Feather } from '@expo/vector-icons';
+import { useRouter } from 'expo-router'; // <--- 1. Import Router
 import "../global.css";
 
 type Meal = {
@@ -18,6 +19,8 @@ type MealListProps = {
 };
 
 export default function MealList({ meals }: MealListProps) {
+  const router = useRouter(); // <--- 2. Initialize Router
+
   return (
     <FlatList 
       data={meals}
@@ -25,17 +28,23 @@ export default function MealList({ meals }: MealListProps) {
       showsVerticalScrollIndicator={false}
       className="flex-1 w-full max-w-xl self-center px-5 pt-6"
       
-      // FIX 1: Add Margin to the bottom of the list container
-      // The MenuBar is ~160px tall including its bottom spacing. 
-      // We reserve this space so the list physically ends above it.
+      // Bottom spacing for the floating menu bar
       style={{ marginBottom: 100 }}
-
-      // FIX 2: Reset Padding
-      // Since we aren't scrolling *behind* the bar anymore, we don't need huge padding.
       contentContainerStyle={{ paddingBottom: 20 }} 
       
       renderItem={({ item }) => (
-        <View className="flex-row bg-primaryBackground rounded-3xl mb-5 overflow-hidden shadow-sm h-36 border border-secondaryBackground">
+        // <--- 3. Changed main wrapper from View to TouchableOpacity
+        <TouchableOpacity 
+          className="flex-row bg-primaryBackground rounded-3xl mb-5 overflow-hidden shadow-sm h-36 border border-secondaryBackground"
+          activeOpacity={0.8} // Adds a nice tap effect
+          onPress={() => {
+            // <--- 4. Navigate to details on press
+            router.push({
+              pathname: "/RecipeDetails",
+              params: { recipeData: JSON.stringify(item) }
+            });
+          }}
+        >
           
           {/* Left Side: Text Info */}
           <View className="flex-1 p-4 justify-between">
@@ -46,7 +55,8 @@ export default function MealList({ meals }: MealListProps) {
                   </View>
                   <Text className="text-secondaryText text-xs">{item.type}</Text>
               </View>
-              <TouchableOpacity className="w-5 h-5 rounded-full border-2 border-primary" />
+              {/* Small circle indicator (Visual only for now) */}
+              <View className="w-5 h-5 rounded-full border-2 border-primary" />
             </View>
 
             <Text className="text-primaryText font-bodoni font-bold text-lg leading-5 pr-1" numberOfLines={2}>
@@ -70,7 +80,7 @@ export default function MealList({ meals }: MealListProps) {
                resizeMode="cover"
              />
           </View>
-        </View>
+        </TouchableOpacity>
       )}
     />
   );
