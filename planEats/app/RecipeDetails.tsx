@@ -1,8 +1,8 @@
 import React, { useState, useRef, useMemo, useEffect } from 'react';
 import { 
-  View, Text, Image, TouchableOpacity, ScrollView, Alert, FlatList, Dimensions, StatusBar 
+  View, Text, Image, TouchableOpacity, ScrollView, FlatList, Dimensions, StatusBar 
 } from 'react-native';
-import { useLocalSearchParams, useNavigation } from 'expo-router';
+import { useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage'; 
@@ -12,8 +12,10 @@ const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const CAROUSEL_HEIGHT = SCREEN_HEIGHT * 0.5;
 const FALLBACK_IMAGE = "https://placehold.co/600x400/png?text=No+Image";
 
+// --- HELPER: Fix Firebase URLs ---
 const getCleanImageUrl = (url: string | null | undefined) => {
   if (!url || typeof url !== 'string') return null;
+
   if (url.includes("firebasestorage.googleapis.com") && url.includes("/o/")) {
     try {
       const [baseUrl, queryString] = url.split("?");
@@ -23,20 +25,27 @@ const getCleanImageUrl = (url: string | null | undefined) => {
       const encodedPath = rawPath.replace(/\//g, "%2F");
       return `${host}${encodedPath}${queryString ? `?${queryString}` : ''}`;
     } catch (e) {
+      console.warn("Failed to sanitize Firebase URL:", url);
       return url; 
     }
+  }
+  if (!url.startsWith('http') && !url.startsWith('file://') && !url.startsWith('data:')) {
+    return `file://${url}`;
   }
   return url;
 };
 
 export default function RecipeDetails() {
   const navigation = useNavigation();
+  const router = useRouter(); // ✅ Used for navigation to CookingMode
   const params = useLocalSearchParams();
   
+  // Parse Recipe Data
   const recipe = useMemo(() => {
     try {
       return params.recipeData ? JSON.parse(params.recipeData as string) : null;
     } catch (e) {
+      console.error("Failed to parse recipe:", e);
       return null;
     }
   }, [params.recipeData]);
@@ -83,8 +92,16 @@ export default function RecipeDetails() {
   // --- IMAGES ---
   const recipeImages = useMemo(() => {
     if (!recipe) return [FALLBACK_IMAGE];
-    const rawImages = [recipe.image, ...(recipe.steps?.map((s: any) => s.image) || [])];
-    const validUrls = rawImages.map(url => getCleanImageUrl(url)).filter((url): url is string => !!url && url.length > 5);
+    
+    const rawImages = [
+      recipe.image, 
+      ...(recipe.steps?.map((s: any) => s.image) || [])
+    ];
+
+    const validUrls = rawImages
+      .map(url => getCleanImageUrl(url))
+      .filter((url): url is string => !!url && url.length > 5);
+
     return validUrls.length > 0 ? validUrls : [FALLBACK_IMAGE];
   }, [recipe]);
 
@@ -94,6 +111,7 @@ export default function RecipeDetails() {
     }
   }).current;
 
+  // Toggle Checkboxes
   const toggleIngredient = (index: number) => {
     setCheckedIngredients(prev => ({ ...prev, [index]: !prev[index] }));
   };
@@ -115,7 +133,11 @@ export default function RecipeDetails() {
           onViewableItemsChanged={onViewableItemsChanged}
           renderItem={({ item }) => (
             <View style={{ width: SCREEN_WIDTH, height: CAROUSEL_HEIGHT }}>
-              <Image source={{ uri: item }} style={{ width: SCREEN_WIDTH, height: CAROUSEL_HEIGHT }} resizeMode="cover"/>
+              <Image 
+                source={{ uri: item }} 
+                style={{ width: SCREEN_WIDTH, height: CAROUSEL_HEIGHT }}
+                resizeMode="cover"
+              />
             </View>
           )}
         />
@@ -126,17 +148,16 @@ export default function RecipeDetails() {
             <Ionicons name="arrow-back" size={24} color="white" />
           </TouchableOpacity>
 
-          {/* ❤️ FAVORITE BUTTON (UPDATED) ❤️ */}
+          {/* ❤️ FAVORITE BUTTON (Custom Design) ❤️ */}
           <TouchableOpacity 
             onPress={toggleFavorite}
-            // Removed bg-white/green border/circle classes
             className="w-10 h-10 items-center justify-center"
           >
             {isFavorite ? (
               // SAVED: Red Filled Heart
               <Ionicons name="heart" size={32} color="#F44336" />
             ) : (
-              // UNSAVED: White Filled Heart with Green Margin (Outline)
+              // UNSAVED: White Filled Heart with Green Margin
               <View className="items-center justify-center">
                  {/* Layer 1: White Body */}
                  <Ionicons name="heart" size={32} color="white" style={{ position: 'absolute' }} />
@@ -147,6 +168,7 @@ export default function RecipeDetails() {
           </TouchableOpacity>
         </SafeAreaView>
 
+        {/* Counter Badge */}
         {recipeImages.length > 1 && (
           <View className="absolute bottom-12 left-6 bg-black/50 px-3 py-1 rounded-full z-10">
             <Text className="text-white text-xs font-bold">{activeImageIndex + 1} / {recipeImages.length}</Text>
@@ -159,7 +181,9 @@ export default function RecipeDetails() {
         <ScrollView contentContainerStyle={{ paddingBottom: 40 }} showsVerticalScrollIndicator={false}>
           
           <View className="flex-row justify-between items-start mb-2">
-            <TouchableOpacity className="p-2"><View className="w-6" /></TouchableOpacity>
+            <TouchableOpacity className="p-2">
+               {/* Placeholder for alignment */}
+            </TouchableOpacity>
             <View className="items-center flex-1 mx-2">
               <Text className="text-2xl font-bodoni text-primaryText text-center mb-1">{recipe.title}</Text>
               <View className="flex-row items-center space-x-4 mt-1">
@@ -167,22 +191,37 @@ export default function RecipeDetails() {
                    <Ionicons name="time-outline" size={14} color="#4CAF50" style={{marginRight:4}} />
                    <Text className="text-green-700 text-xs font-bold">{recipe.prepTime || "20 min"}</Text>
                 </View>
-                {recipe.calories && (<Text className="text-secondaryText text-sm font-medium">{recipe.calories}</Text>)}
+                {recipe.calories && (
+                  <Text className="text-secondaryText text-sm font-medium">{recipe.calories}</Text>
+                )}
               </View>
             </View>
-             <TouchableOpacity className="p-2"><Ionicons name="share-outline" size={24} color="#757575" /></TouchableOpacity>
+             <TouchableOpacity className="p-2">
+               <Ionicons name="share-outline" size={24} color="#757575" />
+            </TouchableOpacity>
           </View>
           
           <View className="h-[1px] bg-gray-100 my-4" />
 
+          {/* Start Button & Ingredients Header */}
           <View className="flex-row justify-between items-center mb-6">
             <Text className="text-primaryText font-bodoni text-lg">{recipe.ingredients?.length || 0} Ingredients</Text>
-            <TouchableOpacity className="bg-primary px-6 py-3 rounded-full shadow-md">
+            
+            {/* ✅ UPDATED: Link to Cooking Mode */}
+            <TouchableOpacity 
+              className="bg-primary px-6 py-3 rounded-full shadow-md"
+              onPress={() => {
+                router.push({
+                  pathname: "/CookingMode",
+                  params: { recipeData: JSON.stringify(recipe) }
+                });
+              }}
+            >
               <Text className="text-white font-bold">Start now</Text>
             </TouchableOpacity>
           </View>
 
-          {/* Ingredients */}
+          {/* Ingredients List */}
           <View>
             {recipe.ingredients?.map((ing: any, index: number) => (
               <TouchableOpacity key={index} onPress={() => toggleIngredient(index)} className="flex-row items-center mb-4">
