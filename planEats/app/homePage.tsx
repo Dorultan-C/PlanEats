@@ -1,10 +1,10 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, Platform, ScrollView, ActivityIndicator } from 'react-native';
+import React, { useState, useCallback } from 'react';
+import { View, Text, TouchableOpacity, Platform, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import DateTimePicker from '@react-native-community/datetimepicker'; 
 import { Ionicons } from '@expo/vector-icons'; 
-import { useNavigation, useFocusEffect } from '@react-navigation/native'; // ✅ Import useFocusEffect
+import { useNavigation, useFocusEffect } from '@react-navigation/native'; 
 import DateCarousel from '../components/DateCarousel'; 
 import MealList from '../components/MealList';
 import BottomNavBar from '../components/BottomNavBar';
@@ -12,7 +12,7 @@ import "../global.css";
 
 // --- FIREBASE IMPORTS ---
 import { collection, getDocs } from 'firebase/firestore';
-import { db } from '../firebaseConfig'; // Ensure this path is correct
+import { db } from '../firebaseConfig'; 
 
 export default function HomePage() {
   const navigation = useNavigation();
@@ -20,8 +20,8 @@ export default function HomePage() {
   // --- STATE ---
   const [date, setDate] = useState(new Date()); 
   const [showPicker, setShowPicker] = useState(false);
-  const [meals, setMeals] = useState<any[]>([]); // ✅ Holds real data
-  const [loading, setLoading] = useState(true);  // ✅ Loading state
+  const [meals, setMeals] = useState<any[]>([]); 
+  const [loading, setLoading] = useState(true);
 
   // --- FETCH DATA FUNCTION ---
   const fetchRecipes = async () => {
@@ -31,17 +31,24 @@ export default function HomePage() {
       
       const fetchedMeals = querySnapshot.docs.map(doc => {
         const data = doc.data();
+        
+        // ✅ LOGIC: Use the first category (e.g. "Breakfast") or default to "Recipe"
+        const mealType = (data.categories && data.categories.length > 0) 
+          ? data.categories[0] 
+          : "Recipe";
+
         return {
           id: doc.id,
-          // We map your Firebase fields to what the UI expects
           title: data.title || "Untitled Recipe",
           calories: `${data.total_calories || 0} kcal`,
-          image: data.cover_image || 'https://via.placeholder.com/400', // Fallback image
-          prepTime: '20 min', // You can save this in DB later
-          time: 'Recently Added', // Or use data.created_at
-          type: 'Recipe',
-          steps: data.steps || [],
+          image: data.cover_image || 'https://via.placeholder.com/400',
+          prepTime: data.prep_time || '20 min', // Using the real prep_time from DB
+          
+          type: mealType, // <--- Displays "Breakfast", "Dinner", etc.
+          
+          time: 'Recently Added', 
           ingredients: data.ingredients || [], 
+          steps: data.steps || [] 
         };
       });
 
@@ -54,9 +61,8 @@ export default function HomePage() {
   };
 
   // ✅ RE-FETCH WHEN RETURNING TO SCREEN
-  // This ensures new recipes show up immediately after you create them
   useFocusEffect(
-    React.useCallback(() => {
+    useCallback(() => {
       fetchRecipes();
     }, [])
   );
@@ -88,7 +94,7 @@ export default function HomePage() {
         className="bg-primaryBackground pt-2 pb-6 rounded-b-[40px] shadow-sm z-20 w-full max-w-xl self-center relative"
       >
         
-        {/* Floating Action Button */}
+        {/* Floating Add Button */}
         <TouchableOpacity 
           className="absolute right-8 top-16 bg-secondary w-20 h-20 rounded-full items-center justify-center shadow-lg z-50"
           onPress={() => (navigation as any).navigate('CreateRecipe')}
@@ -123,7 +129,7 @@ export default function HomePage() {
         
       </SafeAreaView>
 
-      {/* SECTION 2: MEAL LIST (REAL DATA) */}
+      {/* SECTION 2: MEAL LIST */}
       {loading ? (
         <View className="flex-1 justify-center items-center">
           <ActivityIndicator size="large" color="#4CAF50" />

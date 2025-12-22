@@ -1,48 +1,31 @@
-import React, { useState, useRef, useMemo } from 'react';
+import React, { useState, useRef, useMemo, useEffect } from 'react';
 import { 
   View, Text, Image, TouchableOpacity, ScrollView, Alert, FlatList, Dimensions, StatusBar 
 } from 'react-native';
 import { useLocalSearchParams, useNavigation } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import AsyncStorage from '@react-native-async-storage/async-storage'; 
 import "../global.css";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const CAROUSEL_HEIGHT = SCREEN_HEIGHT * 0.5;
 const FALLBACK_IMAGE = "https://placehold.co/600x400/png?text=No+Image";
 
-// --- HELPER: Fix Firebase URLs ---
-// Converts "recipes/image.jpg" -> "recipes%2Fimage.jpg"
 const getCleanImageUrl = (url: string | null | undefined) => {
   if (!url || typeof url !== 'string') return null;
-
-  // 1. Check if it's a Firebase Storage URL
   if (url.includes("firebasestorage.googleapis.com") && url.includes("/o/")) {
     try {
-      // Split the URL into base (before query params) and query params
       const [baseUrl, queryString] = url.split("?");
-      
-      // Find where the object path starts (after "/o/")
       const pathStartIndex = baseUrl.indexOf("/o/") + 3;
       const host = baseUrl.substring(0, pathStartIndex);
       const rawPath = baseUrl.substring(pathStartIndex);
-
-      // Encode the path (specifically replacing slashes)
-      // We only encode slashes that haven't been encoded yet
       const encodedPath = rawPath.replace(/\//g, "%2F");
-
       return `${host}${encodedPath}${queryString ? `?${queryString}` : ''}`;
     } catch (e) {
-      console.warn("Failed to sanitize Firebase URL:", url);
-      return url; // Return original if parsing fails
+      return url; 
     }
   }
-
-  // 2. Handle local files (missing file:// prefix)
-  if (!url.startsWith('http') && !url.startsWith('file://') && !url.startsWith('data:')) {
-    return `file://${url}`;
-  }
-
   return url;
 };
 
@@ -50,34 +33,58 @@ export default function RecipeDetails() {
   const navigation = useNavigation();
   const params = useLocalSearchParams();
   
-  // Parse Recipe
   const recipe = useMemo(() => {
     try {
       return params.recipeData ? JSON.parse(params.recipeData as string) : null;
     } catch (e) {
-      console.error("Failed to parse recipe:", e);
       return null;
     }
   }, [params.recipeData]);
 
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const [checkedIngredients, setCheckedIngredients] = useState<{[key: number]: boolean}>({});
+  const [isFavorite, setIsFavorite] = useState(false);
 
-  // --- PREPARE IMAGES ---
+  // --- FAVORITES LOGIC ---
+  useEffect(() => {
+    checkFavoriteStatus();
+  }, [recipe]);
+
+  const checkFavoriteStatus = async () => {
+    if (!recipe?.id) return;
+    try {
+      const stored = await AsyncStorage.getItem('favorites');
+      const favorites = stored ? JSON.parse(stored) : [];
+      setIsFavorite(favorites.includes(recipe.id));
+    } catch (error) {
+      console.log("Error checking favorites", error);
+    }
+  };
+
+  const toggleFavorite = async () => {
+    if (!recipe?.id) return;
+    try {
+      const stored = await AsyncStorage.getItem('favorites');
+      let favorites = stored ? JSON.parse(stored) : [];
+
+      if (isFavorite) {
+        favorites = favorites.filter((id: string) => id !== recipe.id);
+      } else {
+        favorites.push(recipe.id);
+      }
+
+      await AsyncStorage.setItem('favorites', JSON.stringify(favorites));
+      setIsFavorite(!isFavorite); 
+    } catch (error) {
+      console.log("Error updating favorites", error);
+    }
+  };
+
+  // --- IMAGES ---
   const recipeImages = useMemo(() => {
     if (!recipe) return [FALLBACK_IMAGE];
-    
-    // Collect all potential image sources
-    const rawImages = [
-      recipe.image, 
-      ...(recipe.steps?.map((s: any) => s.image) || [])
-    ];
-
-    // Clean and Filter
-    const validUrls = rawImages
-      .map(url => getCleanImageUrl(url)) // Apply the Firebase Fix
-      .filter((url): url is string => !!url && url.length > 5);
-
+    const rawImages = [recipe.image, ...(recipe.steps?.map((s: any) => s.image) || [])];
+    const validUrls = rawImages.map(url => getCleanImageUrl(url)).filter((url): url is string => !!url && url.length > 5);
     return validUrls.length > 0 ? validUrls : [FALLBACK_IMAGE];
   }, [recipe]);
 
@@ -87,7 +94,6 @@ export default function RecipeDetails() {
     }
   }).current;
 
-  // Toggle Checkboxes
   const toggleIngredient = (index: number) => {
     setCheckedIngredients(prev => ({ ...prev, [index]: !prev[index] }));
   };
@@ -109,26 +115,38 @@ export default function RecipeDetails() {
           onViewableItemsChanged={onViewableItemsChanged}
           renderItem={({ item }) => (
             <View style={{ width: SCREEN_WIDTH, height: CAROUSEL_HEIGHT }}>
-              <Image 
-                source={{ uri: item }} 
-                style={{ width: SCREEN_WIDTH, height: CAROUSEL_HEIGHT }}
-                resizeMode="cover"
-              />
+              <Image source={{ uri: item }} style={{ width: SCREEN_WIDTH, height: CAROUSEL_HEIGHT }} resizeMode="cover"/>
             </View>
           )}
         />
         
-        {/* Nav Buttons */}
+        {/* NAV & HEART BUTTONS */}
         <SafeAreaView className="absolute top-0 w-full flex-row justify-between px-6 z-10 pointer-events-box-none">
           <TouchableOpacity onPress={() => navigation.goBack()} className="w-10 h-10 bg-black/30 backdrop-blur-md rounded-full items-center justify-center">
             <Ionicons name="arrow-back" size={24} color="white" />
           </TouchableOpacity>
-          <TouchableOpacity className="w-10 h-10 bg-black/30 backdrop-blur-md rounded-full items-center justify-center">
-            <Ionicons name="heart-outline" size={24} color="white" />
+
+          {/* ❤️ FAVORITE BUTTON (UPDATED) ❤️ */}
+          <TouchableOpacity 
+            onPress={toggleFavorite}
+            // Removed bg-white/green border/circle classes
+            className="w-10 h-10 items-center justify-center"
+          >
+            {isFavorite ? (
+              // SAVED: Red Filled Heart
+              <Ionicons name="heart" size={32} color="#F44336" />
+            ) : (
+              // UNSAVED: White Filled Heart with Green Margin (Outline)
+              <View className="items-center justify-center">
+                 {/* Layer 1: White Body */}
+                 <Ionicons name="heart" size={32} color="white" style={{ position: 'absolute' }} />
+                 {/* Layer 2: Green Outline */}
+                 <Ionicons name="heart-outline" size={32} color="#4CAF50" />
+              </View>
+            )}
           </TouchableOpacity>
         </SafeAreaView>
 
-        {/* Counter Badge */}
         {recipeImages.length > 1 && (
           <View className="absolute bottom-12 left-6 bg-black/50 px-3 py-1 rounded-full z-10">
             <Text className="text-white text-xs font-bold">{activeImageIndex + 1} / {recipeImages.length}</Text>
@@ -141,9 +159,7 @@ export default function RecipeDetails() {
         <ScrollView contentContainerStyle={{ paddingBottom: 40 }} showsVerticalScrollIndicator={false}>
           
           <View className="flex-row justify-between items-start mb-2">
-            <TouchableOpacity className="p-2">
-               {/* Placeholder for alignment */}
-            </TouchableOpacity>
+            <TouchableOpacity className="p-2"><View className="w-6" /></TouchableOpacity>
             <View className="items-center flex-1 mx-2">
               <Text className="text-2xl font-bodoni text-primaryText text-center mb-1">{recipe.title}</Text>
               <View className="flex-row items-center space-x-4 mt-1">
@@ -151,14 +167,10 @@ export default function RecipeDetails() {
                    <Ionicons name="time-outline" size={14} color="#4CAF50" style={{marginRight:4}} />
                    <Text className="text-green-700 text-xs font-bold">{recipe.prepTime || "20 min"}</Text>
                 </View>
-                {recipe.calories && (
-                  <Text className="text-secondaryText text-sm font-medium">{recipe.calories}</Text>
-                )}
+                {recipe.calories && (<Text className="text-secondaryText text-sm font-medium">{recipe.calories}</Text>)}
               </View>
             </View>
-             <TouchableOpacity className="p-2">
-               <Ionicons name="share-outline" size={24} color="#757575" />
-            </TouchableOpacity>
+             <TouchableOpacity className="p-2"><Ionicons name="share-outline" size={24} color="#757575" /></TouchableOpacity>
           </View>
           
           <View className="h-[1px] bg-gray-100 my-4" />
