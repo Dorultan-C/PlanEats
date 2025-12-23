@@ -3,18 +3,18 @@ import {
   View, Text, TextInput, TouchableOpacity, ScrollView, Image, Alert, 
   KeyboardAvoidingView, Platform, Modal, ActivityIndicator, LogBox 
 } from 'react-native';
-// 1. Updated Imports: Added useSafeAreaInsets
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import * as ImagePicker from 'expo-image-picker'; 
-import * as FileSystem from 'expo-file-system';
+// 1. REMOVED: import * as FileSystem from 'expo-file-system'; (Caused the crash)
 import IngredientPicker from '../components/IngredientPicker'; 
 import "../global.css";
 
 // --- FIREBASE IMPORTS ---
 import { collection, addDoc, getDocs } from 'firebase/firestore';
-import { ref, uploadString, getDownloadURL } from 'firebase/storage';
+// 2. ADDED: uploadBytes (Replaces uploadString)
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { db, storage } from '../firebaseConfig'; 
 
 LogBox.ignoreLogs(["MediaTypeOptions"]);
@@ -47,11 +47,8 @@ const ALLERGENS = [
 export default function CreateRecipe() {
   const navigation = useNavigation();
   const [loading, setLoading] = useState(false); 
-  
-  // 2. Initialize Insets Hook
   const insets = useSafeAreaInsets();
 
-  // --- MASTER INGREDIENT LIST ---
   const [masterIngredients, setMasterIngredients] = useState<any[]>([]);
   
   // --- CORE DATA ---
@@ -59,8 +56,6 @@ export default function CreateRecipe() {
   const [prepTime, setPrepTime] = useState('');
   const [coverImage, setCoverImage] = useState<string | null>(null); 
   const [totalCalories, setTotalCalories] = useState(0); 
-  
-  // --- METADATA ---
   const [servings, setServings] = useState(2);
   const [selectedMealBases, setSelectedMealBases] = useState<string[]>([]);
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
@@ -86,7 +81,6 @@ export default function CreateRecipe() {
   const [confirmationModalVisible, setConfirmationModalVisible] = useState(false);
   const [tempImage, setTempImage] = useState<{ uri: string, target: 'cover' | 'step', stepId?: string } | null>(null);
 
-  // --- FETCH MASTER INGREDIENTS ---
   useEffect(() => {
     const fetchMasterIngredients = async () => {
       try {
@@ -103,7 +97,6 @@ export default function CreateRecipe() {
     fetchMasterIngredients();
   }, []);
 
-  // --- CALCULATE CALORIES ---
   useEffect(() => {
     let sum = 0;
     ingredients.forEach((ing) => {
@@ -169,16 +162,32 @@ export default function CreateRecipe() {
   const addEquipment = () => { if (equipmentInput.trim().length > 0) { setEquipmentList([...equipmentList, equipmentInput.trim()]); setEquipmentInput(''); } };
   const removeEquipment = (index: number) => setEquipmentList(equipmentList.filter((_, i) => i !== index));
 
+  // --- 3. FIX: Upload Logic (Replaced 'readAsStringAsync' with fetch/blob) ---
   const uploadImageToFirebase = async (uri: string) => {
-    const base64 = await FileSystem.readAsStringAsync(uri, { encoding: 'base64' });
-    const filename = `recipes/${Date.now()}-${Math.random().toString(36).substring(7)}.jpg`;
-    const storageRef = ref(storage, filename);
-    await uploadString(storageRef, base64, 'base64', { contentType: 'image/jpeg' });
-    return await getDownloadURL(storageRef);
+    try {
+      const response = await fetch(uri);
+      const blob = await response.blob();
+      
+      const filename = `recipes/${Date.now()}-${Math.random().toString(36).substring(7)}.jpg`;
+      const storageRef = ref(storage, filename);
+      
+      await uploadBytes(storageRef, blob);
+      return await getDownloadURL(storageRef);
+    } catch (error) {
+      console.error("Upload failed", error);
+      throw error;
+    }
   };
 
   const pickImage = async (target: 'cover' | 'step', stepId?: string) => {
-    const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, allowsEditing: true, aspect: [4, 3], quality: 0.7 });
+    const result = await ImagePicker.launchImageLibraryAsync({ 
+      // 4. REVERTED TO MediaTypeOptions:
+      // It is better to have a "Warning" than a "Red Error" that breaks the build.
+      mediaTypes: ImagePicker.MediaTypeOptions.Images, 
+      allowsEditing: true, 
+      aspect: [4, 3], 
+      quality: 0.7 
+    });
     if (!result.canceled) { setTempImage({ uri: result.assets[0].uri, target, stepId }); setConfirmationModalVisible(true); }
   };
 
@@ -252,12 +261,9 @@ export default function CreateRecipe() {
   return (
     <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
       <View className="flex-1 bg-secondaryBackground">
-        {/* 3. Removed the <SafeAreaView> Wrapper that was here */}
           
-          {/* Header with Custom Padding */}
           <View 
             className="flex-row items-center px-6 pb-4 bg-primaryBackground shadow-sm rounded-b-[30px] z-10"
-            // 4. Added padding top based on insets to support edge-to-edge
             style={{ paddingTop: insets.top + 16 }}
           >
             <TouchableOpacity onPress={() => navigation.goBack()} className="p-2 bg-secondaryBackground rounded-full">
@@ -267,7 +273,6 @@ export default function CreateRecipe() {
           </View>
 
           <ScrollView className="px-6 mt-6" contentContainerStyle={{ paddingBottom: 100 }}>
-            {/* Cover Image */}
             <TouchableOpacity 
               className="w-full h-48 bg-gray-200 rounded-2xl items-center justify-center border-2 border-dashed border-gray-400 mb-6 overflow-hidden"
               onPress={() => pickImage('cover')}
@@ -277,7 +282,6 @@ export default function CreateRecipe() {
               )}
             </TouchableOpacity>
 
-            {/* Basic Info */}
             <Text className="section-title">Basic Info</Text>
             <TextInput className="input mb-4" placeholder="Recipe Title (e.g. Beef Wellington)" value={title} onChangeText={setTitle} />
             <View className="flex-row justify-between mb-4">
@@ -285,7 +289,6 @@ export default function CreateRecipe() {
                <View className="flex-1 ml-2"><Text className="label">Cuisine</Text><TextInput className="input" placeholder="e.g. Italian" value={cuisine} onChangeText={setCuisine} /></View>
             </View>
 
-            {/* Servings */}
             <View className="bg-white p-4 rounded-xl mb-6 flex-row justify-between items-center shadow-sm">
                <Text className="font-bold text-primaryText">Servings</Text>
                <View className="flex-row items-center">
@@ -295,7 +298,6 @@ export default function CreateRecipe() {
                </View>
             </View>
 
-            {/* Meal Base */}
             <Text className="section-title">Meal Base</Text>
             <View className="flex-row flex-wrap mb-4">
               {MEAL_BASES.map(base => (
@@ -309,7 +311,6 @@ export default function CreateRecipe() {
               ))}
             </View>
 
-            {/* Categories */}
             <Text className="section-title">Categories</Text>
             <View className="flex-row flex-wrap mb-6">
               {MEAL_CATEGORIES.map(cat => (
@@ -323,7 +324,6 @@ export default function CreateRecipe() {
               ))}
             </View>
 
-            {/* Ingredients */}
             <View className="flex-row justify-between items-center mb-2"><Text className="section-title mb-0">Ingredients</Text><Text className="text-secondaryText text-xs font-bold">{totalCalories} kcal Total</Text></View>
             {ingredients.map((ing) => (
               <View key={ing.id} className="bg-white p-3 mb-2 rounded-xl shadow-sm flex-row items-center justify-between">
@@ -345,7 +345,6 @@ export default function CreateRecipe() {
               <Text className="ml-2 text-primary font-bold">Add Ingredient</Text>
             </TouchableOpacity>
 
-            {/* Equipment */}
             <Text className="section-title">Equipment Needed</Text>
             <View className="flex-row mb-3">
               <TextInput className="flex-1 bg-white p-3 rounded-l-xl border-y border-l border-gray-200" placeholder="Add tool (e.g. Blender)" value={equipmentInput} onChangeText={setEquipmentInput} />
@@ -357,7 +356,6 @@ export default function CreateRecipe() {
               ))}
             </View>
 
-            {/* Steps */}
             <Text className="section-title">Preparation Steps</Text>
             {steps.map((step, index) => (
               <View key={step.id} className="bg-white p-4 mb-4 rounded-2xl shadow-sm border border-gray-100">
@@ -371,7 +369,6 @@ export default function CreateRecipe() {
             ))}
             <TouchableOpacity onPress={addStep} className="bg-secondaryBackground p-3 rounded-xl items-center mb-6"><Text className="text-primary font-bold">+ Add Step</Text></TouchableOpacity>
 
-            {/* Notes & Wine */}
             <Text className="section-title">Additional Info</Text>
             <Text className="label">Hygiene & Prep Notes</Text>
             <TextInput className="input min-h-[80px] mb-4" multiline placeholder="Wash hands..." value={notes} onChangeText={setNotes} />
@@ -383,7 +380,6 @@ export default function CreateRecipe() {
             </TouchableOpacity>
           </ScrollView>
 
-          {/* Modals */}
           <IngredientPicker isVisible={pickerVisible} onClose={() => setPickerVisible(false)} onAddIngredient={handleSelectFromPicker} onCreateNew={handleCreateNewIngredient} availableIngredients={masterIngredients} />
           
           <Modal visible={ingredientConfigModalVisible} animationType="slide" transparent>

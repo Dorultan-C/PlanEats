@@ -1,20 +1,25 @@
 import React, { useState } from 'react';
 import { 
-  View, Text, TextInput, TouchableOpacity, Image, Alert, ActivityIndicator 
+  View, Text, TextInput, TouchableOpacity, Image, Alert, ActivityIndicator, LogBox 
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
-import { ref, uploadString, getDownloadURL } from 'firebase/storage';
-import * as FileSystem from 'expo-file-system';
+
+// ✅ 1. UPDATE: Import uploadBytes instead of uploadString
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+// ✅ 2. REMOVE: FileSystem is no longer needed
+// import * as FileSystem from 'expo-file-system';
+
 import { storage } from '../firebaseConfig';
 import "../global.css";
 
-// ✅ 1. Import Auth type
 import { updateProfile, Auth } from 'firebase/auth';
 
-// ✅ 2. FIX: Use 'require' with linter disable to bypass the implicit-any error
+// Ignore the media type warning for now (better than a red crash)
+LogBox.ignoreLogs(["MediaTypeOptions"]);
+
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const auth = require('../firebaseConfig').auth as Auth;
 
@@ -29,6 +34,7 @@ export default function EditProfile() {
   // --- IMAGE PICKER ---
   const pickImage = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
+      // Keep MediaTypeOptions to avoid Red Error (Yellow warning is fine)
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsEditing: true,
       aspect: [1, 1],
@@ -50,11 +56,16 @@ export default function EditProfile() {
 
       // 1. If photo changed (is local URI), upload to Firebase Storage
       if (photo && photo !== user.photoURL) {
-        const base64 = await FileSystem.readAsStringAsync(photo, { encoding: 'base64' });
+        
+        // ✅ 3. THE FIX: Use fetch + blob instead of FileSystem
+        const response = await fetch(photo);
+        const blob = await response.blob();
+        
         const filename = `profiles/${user.uid}-${Date.now()}.jpg`;
         const storageRef = ref(storage, filename);
         
-        await uploadString(storageRef, base64, 'base64', { contentType: 'image/jpeg' });
+        // Upload the blob directly
+        await uploadBytes(storageRef, blob);
         photoURL = await getDownloadURL(storageRef);
       }
 
@@ -68,6 +79,7 @@ export default function EditProfile() {
         { text: "OK", onPress: () => router.back() }
       ]);
     } catch (error: any) {
+      console.error(error);
       Alert.alert("Error", error.message);
     } finally {
       setLoading(false);
