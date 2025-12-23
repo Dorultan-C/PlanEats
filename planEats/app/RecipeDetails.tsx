@@ -4,7 +4,8 @@ import {
 } from 'react-native';
 import { useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { SafeAreaView } from 'react-native-safe-area-context';
+// 1. Change import to the hook as recommended in your screenshot
+import { useSafeAreaInsets } from 'react-native-safe-area-context'; 
 import AsyncStorage from '@react-native-async-storage/async-storage'; 
 import "../global.css";
 
@@ -25,27 +26,25 @@ const getCleanImageUrl = (url: string | null | undefined) => {
       const encodedPath = rawPath.replace(/\//g, "%2F");
       return `${host}${encodedPath}${queryString ? `?${queryString}` : ''}`;
     } catch (e) {
-      console.warn("Failed to sanitize Firebase URL:", url);
       return url; 
     }
-  }
-  if (!url.startsWith('http') && !url.startsWith('file://') && !url.startsWith('data:')) {
-    return `file://${url}`;
   }
   return url;
 };
 
 export default function RecipeDetails() {
   const navigation = useNavigation();
-  const router = useRouter(); // ✅ Used for navigation to CookingMode
+  const router = useRouter(); 
   const params = useLocalSearchParams();
   
+  // 2. Initialize the insets hook to get precise safe area values
+  const insets = useSafeAreaInsets(); 
+
   // Parse Recipe Data
   const recipe = useMemo(() => {
     try {
       return params.recipeData ? JSON.parse(params.recipeData as string) : null;
     } catch (e) {
-      console.error("Failed to parse recipe:", e);
       return null;
     }
   }, [params.recipeData]);
@@ -143,7 +142,11 @@ export default function RecipeDetails() {
         />
         
         {/* NAV & HEART BUTTONS */}
-        <SafeAreaView className="absolute top-0 w-full flex-row justify-between px-6 z-10 pointer-events-box-none">
+        {/* 3. Apply the insets here using padding style instead of wrapper component */}
+        <View 
+          className="absolute top-0 w-full flex-row justify-between px-6 z-10 pointer-events-box-none"
+          style={{ paddingTop: insets.top + 10 }} // Adding small buffer (+10) for aesthetics
+        >
           <TouchableOpacity onPress={() => navigation.goBack()} className="w-10 h-10 bg-black/30 backdrop-blur-md rounded-full items-center justify-center">
             <Ionicons name="arrow-back" size={24} color="white" />
           </TouchableOpacity>
@@ -154,19 +157,15 @@ export default function RecipeDetails() {
             className="w-10 h-10 items-center justify-center"
           >
             {isFavorite ? (
-              // SAVED: Red Filled Heart
               <Ionicons name="heart" size={32} color="#F44336" />
             ) : (
-              // UNSAVED: White Filled Heart with Green Margin
               <View className="items-center justify-center">
-                 {/* Layer 1: White Body */}
                  <Ionicons name="heart" size={32} color="white" style={{ position: 'absolute' }} />
-                 {/* Layer 2: Green Outline */}
                  <Ionicons name="heart-outline" size={32} color="#4CAF50" />
               </View>
             )}
           </TouchableOpacity>
-        </SafeAreaView>
+        </View>
 
         {/* Counter Badge */}
         {recipeImages.length > 1 && (
@@ -207,7 +206,6 @@ export default function RecipeDetails() {
           <View className="flex-row justify-between items-center mb-6">
             <Text className="text-primaryText font-bodoni text-lg">{recipe.ingredients?.length || 0} Ingredients</Text>
             
-            {/* ✅ UPDATED: Link to Cooking Mode */}
             <TouchableOpacity 
               className="bg-primary px-6 py-3 rounded-full shadow-md"
               onPress={() => {

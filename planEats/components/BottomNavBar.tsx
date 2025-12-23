@@ -5,7 +5,8 @@ import { router } from 'expo-router';
 import "../global.css";
 
 type BottomNavBarProps = {
-  activePage: 'Home' | 'Shopping' | 'Menu';
+  // ✅ Added 'Favourites' to the allowed types
+  activePage: 'Home' | 'Shopping' | 'Menu' | 'Favourites';
 };
 
 // Colors from tailwind.config.js
@@ -14,7 +15,6 @@ const PRIMARY_COLOR = '#4CAF50';
 export default function BottomNavBar({ activePage }: BottomNavBarProps) {
   
   const renderUnderline = (isActive: boolean) => {
-    // ✅ Uses 'bg-secondary' (Amber #FFC107 from screenshot) for the active dash
     if (!isActive) return <View className="h-1 mt-1 w-8" />; 
     return <View className="h-1 mt-1 w-8 bg-secondary rounded-full" />;
   };
@@ -33,8 +33,8 @@ export default function BottomNavBar({ activePage }: BottomNavBarProps) {
         >
             <View className="items-center justify-center">
                 <Ionicons name="home" size={26} color={PRIMARY_COLOR} /> 
-                {/* ✅ Added font-bodoni for consistency */}
                 <Text className="text-primary text-[10px] font-bodoni font-bold mt-1">Home</Text>
+                {/* This will now be FALSE when activePage is 'Favourites' */}
                 {renderUnderline(activePage === 'Home')}
             </View>
         </TouchableOpacity>

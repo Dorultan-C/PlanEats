@@ -40,7 +40,6 @@ export default function Favourites() {
       const allMeals = querySnapshot.docs.map(doc => {
         const data = doc.data();
         
-        // ✅ LOGIC: Get the first category (e.g. "Breakfast") or default to "Recipe"
         const mealType = (data.categories && data.categories.length > 0) 
           ? data.categories[0] 
           : "Recipe";
@@ -51,9 +50,7 @@ export default function Favourites() {
           calories: `${data.total_calories || 0} kcal`,
           image: data.cover_image || 'https://via.placeholder.com/400',
           prepTime: data.prep_time || '20 min',
-          
-          type: mealType, // <--- Displays "Breakfast", "Dinner", etc.
-          
+          type: mealType,
           time: 'Saved',
           ingredients: data.ingredients || [], 
           steps: data.steps || [] 
@@ -93,8 +90,9 @@ export default function Favourites() {
         </View>
       )}
 
-      {/* NAV BAR (Make sure to update activePage if you create a specific tab for this) */}
-      <BottomNavBar activePage="Home" /> 
+      {/* NAV BAR */}
+      {/* ✅ CHANGED: activePage is now 'Favourites', so 'Home' underline will disappear */}
+      <BottomNavBar activePage="Favourites" /> 
     </View>
   );
 }

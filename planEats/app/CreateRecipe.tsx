@@ -3,7 +3,8 @@ import {
   View, Text, TextInput, TouchableOpacity, ScrollView, Image, Alert, 
   KeyboardAvoidingView, Platform, Modal, ActivityIndicator, LogBox 
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+// 1. Updated Imports: Added useSafeAreaInsets
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import * as ImagePicker from 'expo-image-picker'; 
@@ -19,7 +20,6 @@ import { db, storage } from '../firebaseConfig';
 LogBox.ignoreLogs(["MediaTypeOptions"]);
 
 // --- CONSTANTS ---
-// Added "Beans & Legumes" as requested
 const MEAL_BASES = [
   "Beef", "Pork", "Poultry", "Fish", "Seafood", 
   "Beans & Legumes", "Vegetarian", "Vegan", "Halal", "Kosher", "Gluten Free"
@@ -27,7 +27,6 @@ const MEAL_BASES = [
 
 const MEAL_CATEGORIES = ["Breakfast", "Brunch", "Lunch", "Dinner", "Snack", "Dessert"];
 
-// ... (Allergens constant remains the same) ...
 const ALLERGENS = [
   { id: 'gluten', name: 'Gluten', icon: 'https://img.icons8.com/color/96/bread.png' },
   { id: 'crustaceans', name: 'Crustaceans', icon: 'https://img.icons8.com/color/96/prawn.png' },
@@ -48,6 +47,9 @@ const ALLERGENS = [
 export default function CreateRecipe() {
   const navigation = useNavigation();
   const [loading, setLoading] = useState(false); 
+  
+  // 2. Initialize Insets Hook
+  const insets = useSafeAreaInsets();
 
   // --- MASTER INGREDIENT LIST ---
   const [masterIngredients, setMasterIngredients] = useState<any[]>([]);
@@ -60,10 +62,7 @@ export default function CreateRecipe() {
   
   // --- METADATA ---
   const [servings, setServings] = useState(2);
-  
-  // ✅ CHANGED: Now an array for multi-select
   const [selectedMealBases, setSelectedMealBases] = useState<string[]>([]);
-  
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [cuisine, setCuisine] = useState('');
   const [winePairing, setWinePairing] = useState('');
@@ -118,11 +117,7 @@ export default function CreateRecipe() {
     setTotalCalories(Math.round(sum)); 
   }, [ingredients]); 
 
-  // ==========================================
-  // METADATA UTILS (Updated for Multi-Select)
-  // ==========================================
-  
-  // ✅ NEW: Toggle Meal Bases (Multi-select logic)
+  // --- HANDLERS ---
   const toggleMealBase = (base: string) => {
     if (selectedMealBases.includes(base)) {
       setSelectedMealBases(selectedMealBases.filter(b => b !== base));
@@ -143,19 +138,17 @@ export default function CreateRecipe() {
     setServings(prev => Math.max(1, prev + delta));
   };
 
-  // ... (Keep existing INGREDIENT, EQUIPMENT, IMAGE, STEP handlers exactly as they were) ...
-  // [I have hidden them for brevity, but they exist in your file. Ensure you keep them!]
-
-  // --- RE-INSERTED HANDLERS FOR COMPLETENESS ---
   const handleSelectFromPicker = (ingredient: any) => {
     if (ingredients.find(i => i.id === ingredient.id)) { Alert.alert("Already Added", "This ingredient is already in your list."); return; }
     setCurrentIngredient({ ...ingredient, quantity: '', calories: ingredient.calories || '', allergens: ingredient.allergens || [], isNew: false });
     setPickerVisible(false); setTimeout(() => setIngredientConfigModalVisible(true), 300);
   };
+
   const handleCreateNewIngredient = (name: string) => {
     setCurrentIngredient({ id: `custom_${Date.now()}`, name, image: 'https://img.icons8.com/color/96/ingredients.png', unit: 'g', quantity: '', calories: '', allergens: [], isNew: true });
     setPickerVisible(false); setTimeout(() => setIngredientConfigModalVisible(true), 300);
   };
+
   const confirmAddIngredient = async () => {
     if (!currentIngredient?.quantity) { Alert.alert("Quantity Missing", "Please enter a quantity."); return; }
     setIngredients([...ingredients, currentIngredient]);
@@ -164,14 +157,18 @@ export default function CreateRecipe() {
     }
     setIngredientConfigModalVisible(false); setCurrentIngredient(null);
   };
+
   const toggleAllergen = (allergenId: string) => {
     if (!currentIngredient) return;
     const currentList = currentIngredient.allergens || [];
     setCurrentIngredient({ ...currentIngredient, allergens: currentList.includes(allergenId) ? currentList.filter((id: string) => id !== allergenId) : [...currentList, allergenId] });
   };
+
   const removeIngredient = (id: string) => setIngredients(ingredients.filter(i => i.id !== id));
+  
   const addEquipment = () => { if (equipmentInput.trim().length > 0) { setEquipmentList([...equipmentList, equipmentInput.trim()]); setEquipmentInput(''); } };
   const removeEquipment = (index: number) => setEquipmentList(equipmentList.filter((_, i) => i !== index));
+
   const uploadImageToFirebase = async (uri: string) => {
     const base64 = await FileSystem.readAsStringAsync(uri, { encoding: 'base64' });
     const filename = `recipes/${Date.now()}-${Math.random().toString(36).substring(7)}.jpg`;
@@ -179,25 +176,25 @@ export default function CreateRecipe() {
     await uploadString(storageRef, base64, 'base64', { contentType: 'image/jpeg' });
     return await getDownloadURL(storageRef);
   };
+
   const pickImage = async (target: 'cover' | 'step', stepId?: string) => {
     const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, allowsEditing: true, aspect: [4, 3], quality: 0.7 });
     if (!result.canceled) { setTempImage({ uri: result.assets[0].uri, target, stepId }); setConfirmationModalVisible(true); }
   };
+
   const handleConfirmImage = () => {
     if (!tempImage) return;
     if (tempImage.target === 'cover') setCoverImage(tempImage.uri);
     else if (tempImage.target === 'step' && tempImage.stepId) { const updatedSteps = steps.map(step => step.id === tempImage.stepId ? { ...step, image: tempImage.uri } : step); setSteps(updatedSteps); }
     setConfirmationModalVisible(false); setTempImage(null);
   };
+
   const handleCropAgain = async () => { if (!tempImage) return; setConfirmationModalVisible(false); setTimeout(() => pickImage(tempImage.target, tempImage.stepId), 500); };
+  
   const addStep = () => setSteps([...steps, { id: Date.now().toString(), title: '', description: '', timers: [], image: null }]);
   const updateStepText = (id: string, field: 'title' | 'description', text: string) => setSteps(steps.map(step => step.id === id ? { ...step, [field]: text } : step));
   const removeStep = (id: string) => setSteps(steps.filter(step => step.id !== id));
 
-
-  // ==========================================
-  // SAVE RECIPE (UPDATED)
-  // ==========================================
   const handleSaveRecipe = async () => {
     if (!title || ingredients.length === 0 || !prepTime) {
       Alert.alert("Missing Info", "Title, Ingredients, and Prep Time are required.");
@@ -227,10 +224,7 @@ export default function CreateRecipe() {
         total_calories: totalCalories,
         created_at: new Date(),
         servings,
-        
-        // ✅ SAVE AS ARRAY
         meal_bases: selectedMealBases, 
-        
         categories: selectedCategories,
         cuisine,
         equipment: equipmentList,
@@ -258,10 +252,14 @@ export default function CreateRecipe() {
   return (
     <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
       <View className="flex-1 bg-secondaryBackground">
-        <SafeAreaView className="flex-1">
+        {/* 3. Removed the <SafeAreaView> Wrapper that was here */}
           
-          {/* Header */}
-          <View className="flex-row items-center px-6 py-4 bg-primaryBackground shadow-sm rounded-b-[30px] z-10">
+          {/* Header with Custom Padding */}
+          <View 
+            className="flex-row items-center px-6 pb-4 bg-primaryBackground shadow-sm rounded-b-[30px] z-10"
+            // 4. Added padding top based on insets to support edge-to-edge
+            style={{ paddingTop: insets.top + 16 }}
+          >
             <TouchableOpacity onPress={() => navigation.goBack()} className="p-2 bg-secondaryBackground rounded-full">
               <Ionicons name="arrow-back" size={24} color="#212121" />
             </TouchableOpacity>
@@ -297,7 +295,7 @@ export default function CreateRecipe() {
                </View>
             </View>
 
-            {/* ✅ MEAL BASE (MULTI-SELECT) */}
+            {/* Meal Base */}
             <Text className="section-title">Meal Base</Text>
             <View className="flex-row flex-wrap mb-4">
               {MEAL_BASES.map(base => (
@@ -428,8 +426,6 @@ export default function CreateRecipe() {
                </View>
             </SafeAreaView>
           </Modal>
-
-        </SafeAreaView>
       </View>
     </KeyboardAvoidingView>
   );

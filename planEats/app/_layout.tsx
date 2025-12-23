@@ -3,6 +3,8 @@ import * as SplashScreen from 'expo-splash-screen';
 import { useFonts } from 'expo-font';
 import { useEffect, useState } from 'react';
 import { onAuthStateChanged, User } from 'firebase/auth';
+// 1. IMPORT ADDED HERE
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { auth } from '../firebaseConfig'; 
 import "../global.css";
 
@@ -25,8 +27,6 @@ export default function RootLayout() {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       console.log("👤 User detected:", currentUser ? currentUser.email : "None");
       setUser(currentUser);
-      // FIX: We simply set this to false every time the listener fires initially.
-      // We removed the 'if (initializing)' check to satisfy the useEffect warning.
       setInitializing(false);
     });
 
@@ -40,14 +40,10 @@ export default function RootLayout() {
     }
 
     // "Traffic Cop" Logic:
-    // Only run this if we are done initializing Auth AND fonts are ready
     if (!initializing && fontsLoaded) {
       if (user) {
-        // ✅ User is logged in -> Go straight to Home
-        // We use 'replace' so they can't swipe back to the login screen
         router.replace('/homePage');
       }
-      // ❌ User is NOT logged in -> The app naturally shows the first screen (WelcomeScreen)
     }
   }, [user, initializing, fontsLoaded, fontError]);
 
@@ -57,15 +53,19 @@ export default function RootLayout() {
   }
 
   return (
-    <Stack screenOptions={{ headerShown: false }}>
-      {/* Define all your screens here so the Router knows about them */}
-      <Stack.Screen name="welcomeScreen" />      
-      <Stack.Screen name="homePage" />
-      <Stack.Screen name="logIn" />
-      <Stack.Screen name="signUp" />
-      <Stack.Screen name="forgotPassword" />
-      <Stack.Screen name="menu" /> 
-      <Stack.Screen name="CreateRecipe" />
-    </Stack>
+    // 2. WRAPPER ADDED HERE
+    <SafeAreaProvider>
+      <Stack screenOptions={{ headerShown: false }}>
+        <Stack.Screen name="welcomeScreen" />      
+        <Stack.Screen name="homePage" />
+        <Stack.Screen name="logIn" />
+        <Stack.Screen name="signUp" />
+        <Stack.Screen name="forgotPassword" />
+        <Stack.Screen name="menu" /> 
+        <Stack.Screen name="CreateRecipe" />
+        {/* Make sure RecipeDetails is registered here if it's a screen you navigate to */}
+        <Stack.Screen name="RecipeDetails" /> 
+      </Stack>
+    </SafeAreaProvider>
   );
 }

@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, ScrollView, Image, TouchableOpacity, Switch, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router'; // Added useFocusEffect
 import { signOut } from 'firebase/auth';
 import { auth } from '../firebaseConfig';
 import BottomNavBar from '../components/BottomNavBar';
@@ -10,6 +10,26 @@ import "../global.css"
 
 export default function MenuPage() {
   const [isNotificationsEnabled, setIsNotificationsEnabled] = useState(true);
+  
+  // State for User Data (to update when returning from Edit Profile)
+  const [userData, setUserData] = useState({
+    name: auth.currentUser?.displayName || 'User',
+    photo: auth.currentUser?.photoURL || 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=400&fit=crop'
+  });
+
+  // Reload user data whenever screen comes into focus
+  useFocusEffect(
+    React.useCallback(() => {
+      if (auth.currentUser) {
+        auth.currentUser.reload().then(() => {
+          setUserData({
+            name: auth.currentUser?.displayName || 'User',
+            photo: auth.currentUser?.photoURL || 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=400&fit=crop'
+          });
+        });
+      }
+    }, [])
+  );
 
   const handleLogout = async () => {
     try {
@@ -34,14 +54,16 @@ export default function MenuPage() {
             <View className="flex-row items-center bg-primaryBackground p-4 rounded-2xl shadow-sm border border-secondaryBackground">
                 {/* Profile Image */}
                 <Image 
-                    source={{ uri: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=400&fit=crop' }} 
+                    source={{ uri: userData.photo }} 
                     className="w-16 h-16 rounded-full mr-4"
                 />
                 
                 {/* Name & Edit Link */}
                 <View>
-                    <Text className="text-xl font-bold font-bodoni text-primaryText">John Lee</Text>
-                    <TouchableOpacity>
+                    <Text className="text-xl font-bold font-bodoni text-primaryText">{userData.name}</Text>
+                    
+                    {/* ✅ LINKED TO EDIT PROFILE */}
+                    <TouchableOpacity onPress={() => router.push('/EditProfile')}>
                         <Text className="text-primary font-bold text-sm underline mt-1">Edit Profile</Text>
                     </TouchableOpacity>
                 </View>
@@ -53,7 +75,7 @@ export default function MenuPage() {
       <ScrollView 
         className="flex-1 w-full max-w-xl self-center" 
         showsVerticalScrollIndicator={false} 
-        contentContainerStyle={{ paddingBottom: 150 }} // Extra padding for the new taller nav bar
+        contentContainerStyle={{ paddingBottom: 150 }} 
       >
         
         {/* --- SECTION: MY FOOD --- */}
@@ -62,7 +84,6 @@ export default function MenuPage() {
         </View>
 
         <View className="px-6">
-            {/* Dietary Type */}
             <TouchableOpacity className="flex-row justify-between items-center py-5 border-b border-secondaryBackground">
                 <Text className="text-lg font-bodoni text-primaryText">Dietary Type</Text>
                 <View className="flex-row items-center">
@@ -71,7 +92,6 @@ export default function MenuPage() {
                 </View>
             </TouchableOpacity>
 
-            {/* Allergy & Preferences */}
             <TouchableOpacity className="flex-row justify-between items-center py-5 border-b border-secondaryBackground">
                 <Text className="text-lg font-bodoni text-primaryText">Allergy & Preferences</Text>
                 <View className="flex-row items-center">
@@ -80,8 +100,10 @@ export default function MenuPage() {
                 </View>
             </TouchableOpacity>
 
-            {/* Favourite Dishes */}
-            <TouchableOpacity className="flex-row justify-between items-center py-5">
+            <TouchableOpacity 
+                className="flex-row justify-between items-center py-5"
+                onPress={() => router.push('/Favourites')}
+            >
                 <Text className="text-lg font-bodoni text-primaryText">Favourite dishes</Text>
                 <Feather name="chevron-right" size={20} color="#757575" />
             </TouchableOpacity>
@@ -94,7 +116,6 @@ export default function MenuPage() {
         </View>
 
         <View className="px-6">
-            {/* Notifications Toggle */}
             <View className="flex-row justify-between items-center py-4 border-b border-secondaryBackground">
                 <Text className="text-lg font-bodoni text-primaryText">Notifications</Text>
                 <Switch 
@@ -105,7 +126,6 @@ export default function MenuPage() {
                 />
             </View>
 
-            {/* Units */}
             <TouchableOpacity className="flex-row justify-between items-center py-5">
                 <Text className="text-lg font-bodoni text-primaryText">Units</Text>
                 <View className="flex-row items-center">
@@ -122,13 +142,11 @@ export default function MenuPage() {
         </View>
 
         <View className="px-6">
-            {/* Help & FAQs */}
             <TouchableOpacity className="flex-row justify-between items-center py-5 border-b border-secondaryBackground">
                 <Text className="text-lg font-bodoni text-primaryText">Help & FAQs</Text>
                 <Feather name="chevron-right" size={20} color="#757575" />
             </TouchableOpacity>
 
-            {/* LOG OUT BUTTON */}
             <TouchableOpacity onPress={handleLogout} className="w-full py-6 items-center">
                 <Text className="text-alternate font-bodoni text-xl">Log Out</Text>
             </TouchableOpacity>
@@ -136,7 +154,6 @@ export default function MenuPage() {
 
       </ScrollView>
 
-      {/* 3. REUSABLE BOTTOM NAVIGATION BAR */}
       <BottomNavBar activePage="Menu" />
 
     </View>
