@@ -4,7 +4,6 @@ import {
 } from 'react-native';
 import { useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-// 1. Change import to the hook as recommended in your screenshot
 import { useSafeAreaInsets } from 'react-native-safe-area-context'; 
 import AsyncStorage from '@react-native-async-storage/async-storage'; 
 import "../global.css";
@@ -25,7 +24,8 @@ const getCleanImageUrl = (url: string | null | undefined) => {
       const rawPath = baseUrl.substring(pathStartIndex);
       const encodedPath = rawPath.replace(/\//g, "%2F");
       return `${host}${encodedPath}${queryString ? `?${queryString}` : ''}`;
-    } catch (e) {
+    } catch {
+      // ✅ FIX: Removed the unused variable (_) entirely
       return url; 
     }
   }
@@ -36,15 +36,14 @@ export default function RecipeDetails() {
   const navigation = useNavigation();
   const router = useRouter(); 
   const params = useLocalSearchParams();
-  
-  // 2. Initialize the insets hook to get precise safe area values
   const insets = useSafeAreaInsets(); 
 
   // Parse Recipe Data
   const recipe = useMemo(() => {
     try {
       return params.recipeData ? JSON.parse(params.recipeData as string) : null;
-    } catch (e) {
+    } catch {
+      // ✅ FIX: Removed the unused variable (_) entirely
       return null;
     }
   }, [params.recipeData]);
@@ -55,19 +54,19 @@ export default function RecipeDetails() {
 
   // --- FAVORITES LOGIC ---
   useEffect(() => {
+    const checkFavoriteStatus = async () => {
+      if (!recipe?.id) return;
+      try {
+        const stored = await AsyncStorage.getItem('favorites');
+        const favorites = stored ? JSON.parse(stored) : [];
+        setIsFavorite(favorites.includes(recipe.id));
+      } catch (error) {
+        console.log("Error checking favorites", error);
+      }
+    };
+
     checkFavoriteStatus();
   }, [recipe]);
-
-  const checkFavoriteStatus = async () => {
-    if (!recipe?.id) return;
-    try {
-      const stored = await AsyncStorage.getItem('favorites');
-      const favorites = stored ? JSON.parse(stored) : [];
-      setIsFavorite(favorites.includes(recipe.id));
-    } catch (error) {
-      console.log("Error checking favorites", error);
-    }
-  };
 
   const toggleFavorite = async () => {
     if (!recipe?.id) return;
@@ -142,16 +141,15 @@ export default function RecipeDetails() {
         />
         
         {/* NAV & HEART BUTTONS */}
-        {/* 3. Apply the insets here using padding style instead of wrapper component */}
         <View 
           className="absolute top-0 w-full flex-row justify-between px-6 z-10 pointer-events-box-none"
-          style={{ paddingTop: insets.top + 10 }} // Adding small buffer (+10) for aesthetics
+          style={{ paddingTop: insets.top + 10 }} 
         >
           <TouchableOpacity onPress={() => navigation.goBack()} className="w-10 h-10 bg-black/30 backdrop-blur-md rounded-full items-center justify-center">
             <Ionicons name="arrow-back" size={24} color="white" />
           </TouchableOpacity>
 
-          {/* ❤️ FAVORITE BUTTON (Custom Design) ❤️ */}
+          {/* ❤️ FAVORITE BUTTON */}
           <TouchableOpacity 
             onPress={toggleFavorite}
             className="w-10 h-10 items-center justify-center"
@@ -181,7 +179,6 @@ export default function RecipeDetails() {
           
           <View className="flex-row justify-between items-start mb-2">
             <TouchableOpacity className="p-2">
-               {/* Placeholder for alignment */}
             </TouchableOpacity>
             <View className="items-center flex-1 mx-2">
               <Text className="text-2xl font-bodoni text-primaryText text-center mb-1">{recipe.title}</Text>
