@@ -2,11 +2,13 @@ import { Stack, router } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { useFonts } from 'expo-font';
 import { useEffect, useState } from 'react';
-import { onAuthStateChanged, User } from 'firebase/auth';
-// 1. IMPORT ADDED HERE
+import { onAuthStateChanged, User, Auth } from 'firebase/auth'; // ✅ Added Auth type
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { auth } from '../firebaseConfig'; 
 import "../global.css";
+
+// ✅ FIX: Use 'require' with linter disable to bypass the implicit-any error
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const auth = require('../firebaseConfig').auth as Auth;
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync();
@@ -53,7 +55,6 @@ export default function RootLayout() {
   }
 
   return (
-    // 2. WRAPPER ADDED HERE
     <SafeAreaProvider>
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name="welcomeScreen" />      
@@ -63,8 +64,10 @@ export default function RootLayout() {
         <Stack.Screen name="forgotPassword" />
         <Stack.Screen name="menu" /> 
         <Stack.Screen name="CreateRecipe" />
-        {/* Make sure RecipeDetails is registered here if it's a screen you navigate to */}
         <Stack.Screen name="RecipeDetails" /> 
+        <Stack.Screen name="CookingMode" />
+        <Stack.Screen name="EditProfile" />
+        <Stack.Screen name="Favourites" />
       </Stack>
     </SafeAreaProvider>
   );

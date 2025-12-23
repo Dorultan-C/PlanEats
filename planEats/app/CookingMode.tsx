@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { 
-  View, Text, Image, TouchableOpacity, ScrollView, StatusBar, Alert, Platform 
+  View, Text, Image, TouchableOpacity, ScrollView, StatusBar, Alert,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
