@@ -7,17 +7,16 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import * as ImagePicker from 'expo-image-picker'; 
-// 1. REMOVED: import * as FileSystem from 'expo-file-system'; (Caused the crash)
 import IngredientPicker from '../components/IngredientPicker'; 
 import "../global.css";
 
 // --- FIREBASE IMPORTS ---
 import { collection, addDoc, getDocs } from 'firebase/firestore';
-// 2. ADDED: uploadBytes (Replaces uploadString)
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { db, storage } from '../firebaseConfig'; 
 
-LogBox.ignoreLogs(["MediaTypeOptions"]);
+// ✅ FIX: Ignore the specific warning about MediaTypeOptions until the package updates fully
+LogBox.ignoreLogs(["MediaTypeOptions", "SafeAreaView"]);
 
 // --- CONSTANTS ---
 const MEAL_BASES = [
@@ -70,7 +69,7 @@ export default function CreateRecipe() {
   // --- INGREDIENTS & STEPS ---
   const [ingredients, setIngredients] = useState<any[]>([]);
   const [steps, setSteps] = useState<any[]>([
-    { id: '1', title: '', description: '', timers: [], image: null } 
+    { id: '1', title: '', description: '', timers: [], image: null, tempTimerInput: '' } 
   ]);
 
   // --- MODAL STATES ---
@@ -113,9 +112,9 @@ export default function CreateRecipe() {
   // --- HANDLERS ---
   const toggleMealBase = (base: string) => {
     if (selectedMealBases.includes(base)) {
-      setSelectedMealBases(selectedMealBases.filter(b => b !== base));
+      setSelectedMealBases([]);
     } else {
-      setSelectedMealBases([...selectedMealBases, base]);
+      setSelectedMealBases([base]);
     }
   };
 
@@ -162,7 +161,6 @@ export default function CreateRecipe() {
   const addEquipment = () => { if (equipmentInput.trim().length > 0) { setEquipmentList([...equipmentList, equipmentInput.trim()]); setEquipmentInput(''); } };
   const removeEquipment = (index: number) => setEquipmentList(equipmentList.filter((_, i) => i !== index));
 
-  // --- 3. FIX: Upload Logic (Replaced 'readAsStringAsync' with fetch/blob) ---
   const uploadImageToFirebase = async (uri: string) => {
     try {
       const response = await fetch(uri);
@@ -181,8 +179,7 @@ export default function CreateRecipe() {
 
   const pickImage = async (target: 'cover' | 'step', stepId?: string) => {
     const result = await ImagePicker.launchImageLibraryAsync({ 
-      // 4. REVERTED TO MediaTypeOptions:
-      // It is better to have a "Warning" than a "Red Error" that breaks the build.
+      // ✅ FIX: Reverted to MediaTypeOptions to fix Type Error (we ignore the log instead)
       mediaTypes: ImagePicker.MediaTypeOptions.Images, 
       allowsEditing: true, 
       aspect: [4, 3], 
@@ -200,60 +197,103 @@ export default function CreateRecipe() {
 
   const handleCropAgain = async () => { if (!tempImage) return; setConfirmationModalVisible(false); setTimeout(() => pickImage(tempImage.target, tempImage.stepId), 500); };
   
-  const addStep = () => setSteps([...steps, { id: Date.now().toString(), title: '', description: '', timers: [], image: null }]);
-  const updateStepText = (id: string, field: 'title' | 'description', text: string) => setSteps(steps.map(step => step.id === id ? { ...step, [field]: text } : step));
+  // --- STEPS & TIMERS ---
+  const addStep = () => setSteps([...steps, { id: Date.now().toString(), title: '', description: '', timers: [], image: null, tempTimerInput: '' }]);
+  const updateStepText = (id: string, field: 'title' | 'description' | 'tempTimerInput', text: string) => setSteps(steps.map(step => step.id === id ? { ...step, [field]: text } : step));
   const removeStep = (id: string) => setSteps(steps.filter(step => step.id !== id));
 
+  const addTimerToStep = (stepId: string) => {
+    const stepIndex = steps.findIndex(s => s.id === stepId);
+    if (stepIndex === -1) return;
+    const step = steps[stepIndex];
+    const val = parseInt(step.tempTimerInput);
+    
+    if (isNaN(val) || val <= 0) return;
+    if (step.timers.length >= 3) { Alert.alert("Max 3 timers per step"); return; }
+
+    const newSteps = [...steps];
+    newSteps[stepIndex].timers.push(val);
+    newSteps[stepIndex].tempTimerInput = ''; 
+    setSteps(newSteps);
+  };
+
+  const removeTimerFromStep = (stepId: string, timerIndex: number) => {
+    const newSteps = steps.map(step => {
+      if(step.id === stepId) {
+        const newTimers = [...step.timers];
+        newTimers.splice(timerIndex, 1);
+        return { ...step, timers: newTimers };
+      }
+      return step;
+    });
+    setSteps(newSteps);
+  };
+
+  // --- SAVE FUNCTION ---
   const handleSaveRecipe = async () => {
     if (!title || ingredients.length === 0 || !prepTime) {
       Alert.alert("Missing Info", "Title, Ingredients, and Prep Time are required.");
       return;
     }
     setLoading(true); 
+
     try {
       let remoteCoverUrl = null;
       if (coverImage) remoteCoverUrl = await uploadImageToFirebase(coverImage);
 
-      const updatedSteps = await Promise.all(steps.map(async (step) => {
+      const updatedSteps = await Promise.all(steps.map(async (step, index) => {
         let remoteStepUrl = null;
         if (step.image) remoteStepUrl = await uploadImageToFirebase(step.image);
         return {
-          step_number: parseInt(step.id),
+          step_number: index + 1,
           title: step.title,
           description: step.description,
           image: remoteStepUrl, 
-          timers: step.timers.map((t: string) => parseFloat(t) || 0).filter((t: number) => t > 0)
+          timers: step.timers.map((t: any) => Number(t)).filter((t: number) => t > 0)
         };
       }));
+
+      const formattedIngredients = ingredients.map(ing => {
+        const qty = parseFloat(ing.quantity) || 0;
+        const baseCals = parseFloat(ing.calories) || 0;
+        const calculatedCals = ing.unit === 'pcs' ? qty * baseCals : (qty / 100) * baseCals;
+
+        return {
+          id: ing.id,
+          name: ing.name,
+          quantity: qty,
+          unit: ing.unit,
+          calories: baseCals,
+          calculatedCalories: calculatedCals,
+          allergens: ing.allergens || []
+        };
+      });
 
       const recipeData = {
         title,
         prep_time: prepTime,
-        cover_image: remoteCoverUrl,
-        total_calories: totalCalories,
-        created_at: new Date(),
-        servings,
-        meal_bases: selectedMealBases, 
+        image: remoteCoverUrl,
+        calories: totalCalories,
+        createdAt: new Date(),
+        servings: Number(servings),
+        meal_base: selectedMealBases.length > 0 ? selectedMealBases[0] : "Other", 
         categories: selectedCategories,
         cuisine,
         equipment: equipmentList,
         notes,
         wine_pairing: winePairing,
-        ingredients: ingredients.map(ing => ({
-           name: ing.name,
-           quantity: parseFloat(ing.quantity) || 0,
-           unit: ing.unit,
-           calories_per_100: parseFloat(ing.calories) || 0,
-           allergens: ing.allergens || []
-        })),
-        steps: updatedSteps
+        ingredients: formattedIngredients,
+        steps: updatedSteps,
+        status: 'pending'
       };
 
       await addDoc(collection(db, "recipes"), recipeData);
       setLoading(false);
-      Alert.alert("Success!", "Recipe saved fully!", [{ text: "OK", onPress: () => navigation.goBack() }]);
+      Alert.alert("Success!", "Recipe saved and sent for verification!", [{ text: "OK", onPress: () => navigation.goBack() }]);
+    
     } catch (error: any) {
       setLoading(false);
+      console.error(error);
       Alert.alert("Error", error.message);
     }
   };
@@ -273,11 +313,14 @@ export default function CreateRecipe() {
           </View>
 
           <ScrollView className="px-6 mt-6" contentContainerStyle={{ paddingBottom: 100 }}>
+            {/* Cover Photo */}
             <TouchableOpacity 
-              className="w-full h-48 bg-gray-200 rounded-2xl items-center justify-center border-2 border-dashed border-gray-400 mb-6 overflow-hidden"
+              className={`w-full h-48 bg-gray-200 rounded-2xl border-2 border-dashed border-gray-400 mb-6 overflow-hidden ${coverImage ? '' : 'items-center justify-center'}`}
               onPress={() => pickImage('cover')}
             >
-              {coverImage ? <Image source={{ uri: coverImage }} className="w-full h-full" resizeMode="cover" /> : (
+              {coverImage ? (
+                <Image source={{ uri: coverImage }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+              ) : (
                 <View className="items-center"><Ionicons name="camera" size={40} color="gray" /><Text className="text-secondaryText mt-2">Cover Photo</Text></View>
               )}
             </TouchableOpacity>
@@ -298,7 +341,7 @@ export default function CreateRecipe() {
                </View>
             </View>
 
-            <Text className="section-title">Meal Base</Text>
+            <Text className="section-title">Meal Base (Select One)</Text>
             <View className="flex-row flex-wrap mb-4">
               {MEAL_BASES.map(base => (
                 <TouchableOpacity 
@@ -328,12 +371,12 @@ export default function CreateRecipe() {
             {ingredients.map((ing) => (
               <View key={ing.id} className="bg-white p-3 mb-2 rounded-xl shadow-sm flex-row items-center justify-between">
                 <View className="flex-row items-center flex-1">
-                   <Image source={{ uri: ing.image }} className="w-10 h-10 rounded mr-3 bg-gray-50" />
+                   <Image source={{ uri: ing.image }} style={{ width: 40, height: 40, borderRadius: 6 }} className="mr-3 bg-gray-50" />
                    <View>
                      <Text className="font-bold text-primaryText">{ing.name}</Text>
                      <Text className="text-xs text-secondaryText">{ing.quantity} {ing.unit} • {ing.calories} kcal</Text>
                      <View className="flex-row mt-1">
-                       {ing.allergens?.map((aId: string) => <Image key={aId} source={{ uri: ALLERGENS.find(al => al.id === aId)?.icon }} className="w-4 h-4 mr-1" />)}
+                       {ing.allergens?.map((aId: string) => <Image key={aId} source={{ uri: ALLERGENS.find(al => al.id === aId)?.icon }} style={{ width: 16, height: 16, marginRight: 4 }} />)}
                      </View>
                    </View>
                 </View>
@@ -361,10 +404,55 @@ export default function CreateRecipe() {
               <View key={step.id} className="bg-white p-4 mb-4 rounded-2xl shadow-sm border border-gray-100">
                 <View className="flex-row justify-between mb-2"><Text className="font-bold text-primaryText">Step {index + 1}</Text><TouchableOpacity onPress={() => removeStep(step.id)}><Ionicons name="close" size={20} color="gray" /></TouchableOpacity></View>
                 <TextInput className="input mb-2 font-bold" placeholder="Step Title" value={step.title} onChangeText={(t) => updateStepText(step.id, 'title', t)} />
-                <TouchableOpacity className="h-32 bg-secondaryBackground rounded-xl items-center justify-center border border-dashed border-gray-300 mb-2 overflow-hidden" onPress={() => pickImage('step', step.id)}>
-                  {step.image ? <Image source={{ uri: step.image }} className="w-full h-full" resizeMode="cover" /> : <View className="items-center"><Ionicons name="image-outline" size={24} color="gray" /><Text className="text-xs text-secondaryText">Upload Step Photo</Text></View>}
+                
+                <TouchableOpacity 
+                  className={`h-32 bg-secondaryBackground rounded-xl border border-dashed border-gray-300 mb-2 overflow-hidden ${step.image ? '' : 'items-center justify-center'}`}
+                  onPress={() => pickImage('step', step.id)}
+                >
+                  {step.image ? (
+                    <Image source={{ uri: step.image }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+                  ) : (
+                    <View className="items-center"><Ionicons name="image-outline" size={24} color="gray" /><Text className="text-xs text-secondaryText">Upload Step Photo</Text></View>
+                  )}
                 </TouchableOpacity>
+                
                 <TextInput className="input min-h-[80px]" placeholder="Describe the step..." multiline value={step.description} onChangeText={(t) => updateStepText(step.id, 'description', t)} />
+                
+                {/* TIMERS UI SECTION (FIXED HEIGHT) */}
+                <View className="mt-3 bg-gray-50 p-3 rounded-xl border border-gray-100">
+                  <View className="flex-row items-center mb-2">
+                    <Ionicons name="timer-outline" size={18} color="#666" />
+                    <Text className="text-gray-600 ml-1 font-bold text-xs">Step Timers</Text>
+                  </View>
+                  
+                  <View className="flex-row flex-wrap items-center">
+                    {step.timers.map((t: number, i: number) => (
+                      <View key={i} className="bg-green-100 px-3 py-1 rounded-full flex-row items-center mr-2 mb-2 border border-green-200 shadow-sm">
+                        <Text className="text-green-800 text-xs font-bold mr-1">{t}m</Text>
+                        <TouchableOpacity onPress={() => removeTimerFromStep(step.id, i)}>
+                          <Ionicons name="close-circle" size={16} color="#2E7D32" />
+                        </TouchableOpacity>
+                      </View>
+                    ))}
+
+                    {/* ✅ Add Timer Input - FIXED HEIGHT h-10 */}
+                    {step.timers.length < 3 && (
+                      <View className="flex-row items-center bg-white rounded-lg border border-gray-300 overflow-hidden mb-2 h-10">
+                        <TextInput 
+                          className="w-12 h-full text-center text-xs font-bold text-gray-700" 
+                          placeholder="min" 
+                          keyboardType="numeric"
+                          value={step.tempTimerInput}
+                          onChangeText={(t) => updateStepText(step.id, 'tempTimerInput', t)}
+                        />
+                        <TouchableOpacity onPress={() => addTimerToStep(step.id)} className="bg-green-600 h-full justify-center px-3">
+                          <Text className="text-white text-xs font-bold">+</Text>
+                        </TouchableOpacity>
+                      </View>
+                    )}
+                  </View>
+                </View>
+
               </View>
             ))}
             <TouchableOpacity onPress={addStep} className="bg-secondaryBackground p-3 rounded-xl items-center mb-6"><Text className="text-primary font-bold">+ Add Step</Text></TouchableOpacity>
@@ -380,6 +468,7 @@ export default function CreateRecipe() {
             </TouchableOpacity>
           </ScrollView>
 
+          {/* ... MODALS ... */}
           <IngredientPicker isVisible={pickerVisible} onClose={() => setPickerVisible(false)} onAddIngredient={handleSelectFromPicker} onCreateNew={handleCreateNewIngredient} availableIngredients={masterIngredients} />
           
           <Modal visible={ingredientConfigModalVisible} animationType="slide" transparent>
@@ -407,7 +496,17 @@ export default function CreateRecipe() {
             <View className="flex-1 bg-black/80 justify-center p-6">
               <View className="bg-white rounded-3xl p-6">
                 <Text className="text-xl font-bold text-center mb-4 text-red-600">Identify Allergens</Text>
-                <View className="flex-row flex-wrap justify-between">{ALLERGENS.map((allergen) => { const isSelected = (currentIngredient?.allergens || []).includes(allergen.id); return (<TouchableOpacity key={allergen.id} className={`w-[30%] items-center mb-4 p-2 rounded-xl border ${isSelected ? 'bg-red-50 border-red-500' : 'border-transparent'}`} onPress={() => toggleAllergen(allergen.id)}><Image source={{ uri: allergen.icon }} className="w-10 h-10 mb-1" resizeMode="contain" /><Text className={`text-xs text-center ${isSelected ? 'font-bold text-red-600' : 'text-gray-600'}`}>{allergen.name}</Text></TouchableOpacity>); })}</View>
+                <View className="flex-row flex-wrap justify-between">
+                  {ALLERGENS.map((allergen) => { 
+                    const isSelected = (currentIngredient?.allergens || []).includes(allergen.id); 
+                    return (
+                      <TouchableOpacity key={allergen.id} className={`w-[30%] items-center mb-4 p-2 rounded-xl border ${isSelected ? 'bg-red-50 border-red-500' : 'border-transparent'}`} onPress={() => toggleAllergen(allergen.id)}>
+                        <Image source={{ uri: allergen.icon }} style={{ width: 40, height: 40, marginBottom: 4 }} resizeMode="contain" />
+                        <Text className={`text-xs text-center ${isSelected ? 'font-bold text-red-600' : 'text-gray-600'}`}>{allergen.name}</Text>
+                      </TouchableOpacity>
+                    ); 
+                  })}
+                </View>
                 <TouchableOpacity className="bg-primary py-3 rounded-full mt-4" onPress={() => setAllergenModalVisible(false)}><Text className="text-center text-white font-bold">Done</Text></TouchableOpacity>
               </View>
             </View>
@@ -417,7 +516,7 @@ export default function CreateRecipe() {
             <SafeAreaView className="flex-1 bg-primaryBackground">
                <View className="flex-1 relative">
                  <View className="absolute top-4 right-4 z-10"><TouchableOpacity onPress={() => setConfirmationModalVisible(false)} className="bg-black/40 p-2 rounded-full"><Ionicons name="close" size={24} color="white" /></TouchableOpacity></View>
-                 {tempImage && <Image source={{ uri: tempImage.uri }} className="w-full h-full" resizeMode="contain" />}
+                 {tempImage && <Image source={{ uri: tempImage.uri }} style={{ width: '100%', height: '100%' }} resizeMode="contain" />}
                  <View className="absolute bottom-10 w-full px-6 flex-row justify-between"><TouchableOpacity onPress={handleCropAgain} className="bg-white px-6 py-3 rounded-full"><Text className="font-bold">Retake</Text></TouchableOpacity><TouchableOpacity onPress={handleConfirmImage} className="bg-primary px-8 py-3 rounded-full"><Text className="text-white font-bold">Confirm</Text></TouchableOpacity></View>
                </View>
             </SafeAreaView>

@@ -4,21 +4,33 @@ import {
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
-import { useSafeAreaInsets } from 'react-native-safe-area-context'; // ✅ Import this
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import "../global.css";
+
+// ✅ 1. HELPER: Fix Firebase URLs (Same logic as RecipeDetails)
+const getCleanImageUrl = (url: string | null | undefined) => {
+  if (!url || typeof url !== 'string') return null;
+  if (url.includes("firebasestorage.googleapis.com") && url.includes("/o/")) {
+    try {
+      const [baseUrl, queryString] = url.split("?");
+      const pathStartIndex = baseUrl.indexOf("/o/") + 3;
+      const host = baseUrl.substring(0, pathStartIndex);
+      const rawPath = baseUrl.substring(pathStartIndex);
+      const encodedPath = rawPath.replace(/\//g, "%2F");
+      return `${host}${encodedPath}${queryString ? `?${queryString}` : ''}`;
+    } catch { return url; }
+  }
+  return url;
+};
 
 export default function CookingMode() {
   const router = useRouter();
   const params = useLocalSearchParams();
-  
-  // ✅ Get Safe Area Insets (Notch, Nav Bar heights)
   const insets = useSafeAreaInsets(); 
 
-  // --- DATA SETUP ---
   const recipe = params.recipeData ? JSON.parse(params.recipeData as string) : null;
   const steps = recipe?.steps || [];
   
-  // State
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const [isFinished, setIsFinished] = useState(false);
   
@@ -90,6 +102,8 @@ export default function CookingMode() {
   // RENDER: BON APPETIT SCREEN (Completion)
   // ---------------------------------------------------------
   if (isFinished) {
+    const finalImage = getCleanImageUrl(recipe.image);
+
     return (
       <View className="flex-1 bg-white" style={{ paddingTop: insets.top }}>
         <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
@@ -99,11 +113,14 @@ export default function CookingMode() {
               <Text className="text-secondaryText uppercase tracking-widest text-xs mb-8">All Steps Complete</Text>
               
               <View className="w-full h-64 rounded-3xl overflow-hidden shadow-lg mb-8 bg-gray-100">
-                 <Image 
-                   source={{ uri: recipe.image }} 
-                   className="w-full h-full" 
-                   resizeMode="cover"
-                 />
+                 {/* ✅ 2. FIX: Explicit Style Dimensions for Final Image */}
+                 {finalImage && (
+                   <Image 
+                     source={{ uri: finalImage }} 
+                     style={{ width: '100%', height: '100%' }} 
+                     resizeMode="cover"
+                   />
+                 )}
               </View>
 
               <Text className="text-3xl font-bodoni text-primaryText mb-4 text-center">Bon Appetit!</Text>
@@ -136,9 +153,9 @@ export default function CookingMode() {
   // ---------------------------------------------------------
   const currentStep = steps[currentStepIndex];
   const progress = ((currentStepIndex + 1) / steps.length) * 100;
+  const stepImageUrl = getCleanImageUrl(currentStep.image);
 
   return (
-    // ✅ ADDED PADDING TOP FOR CAMERA/NOTCH
     <View className="flex-1 bg-white" style={{ paddingTop: insets.top }}>
       
       <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
@@ -177,8 +194,13 @@ export default function CookingMode() {
 
           {/* Step Image */}
           <View className="w-full h-56 bg-gray-50 rounded-2xl overflow-hidden mb-6 shadow-sm border border-gray-100">
-             {currentStep.image ? (
-               <Image source={{ uri: currentStep.image }} className="w-full h-full" resizeMode="cover" />
+             {stepImageUrl ? (
+               // ✅ 3. FIX: Explicit Style Dimensions for Step Image
+               <Image 
+                 source={{ uri: stepImageUrl }} 
+                 style={{ width: '100%', height: '100%' }}
+                 resizeMode="cover" 
+               />
              ) : (
                <View className="flex-1 items-center justify-center">
                   <Ionicons name="restaurant-outline" size={40} color="#ccc" />
