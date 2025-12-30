@@ -11,11 +11,11 @@ import IngredientPicker from '../components/IngredientPicker';
 import "../global.css";
 
 // --- FIREBASE IMPORTS ---
-import { collection, addDoc, getDocs } from 'firebase/firestore';
+// ✅ FIX: Added 'doc' and 'setDoc' to allow custom IDs
+import { collection, addDoc, getDocs, doc, setDoc } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { db, storage } from '../firebaseConfig'; 
 
-// ✅ FIX: Ignore the specific warning about MediaTypeOptions until the package updates fully
 LogBox.ignoreLogs(["MediaTypeOptions", "SafeAreaView"]);
 
 // --- CONSTANTS ---
@@ -179,7 +179,6 @@ export default function CreateRecipe() {
 
   const pickImage = async (target: 'cover' | 'step', stepId?: string) => {
     const result = await ImagePicker.launchImageLibraryAsync({ 
-      // ✅ FIX: Reverted to MediaTypeOptions to fix Type Error (we ignore the log instead)
       mediaTypes: ImagePicker.MediaTypeOptions.Images, 
       allowsEditing: true, 
       aspect: [4, 3], 
@@ -229,6 +228,15 @@ export default function CreateRecipe() {
     setSteps(newSteps);
   };
 
+  // ✅ HELPER: Convert title to URL-safe ID (e.g., "Spanish Paella" -> "spanish_paella")
+  const generateSlug = (text: string) => {
+    return text
+      .toLowerCase()
+      .trim()
+      .replace(/[^a-z0-9]+/g, '_') // Replace non-alphanumeric chars with _
+      .replace(/^_+|_+$/g, '');   // Trim leading/trailing _
+  };
+
   // --- SAVE FUNCTION ---
   const handleSaveRecipe = async () => {
     if (!title || ingredients.length === 0 || !prepTime) {
@@ -272,8 +280,8 @@ export default function CreateRecipe() {
       const recipeData = {
         title,
         prep_time: prepTime,
-        image: remoteCoverUrl,
-        calories: totalCalories,
+        image: remoteCoverUrl, 
+        calories: totalCalories, 
         createdAt: new Date(),
         servings: Number(servings),
         meal_base: selectedMealBases.length > 0 ? selectedMealBases[0] : "Other", 
@@ -287,9 +295,14 @@ export default function CreateRecipe() {
         status: 'pending'
       };
 
-      await addDoc(collection(db, "recipes"), recipeData);
+      // ✅ FIX: Use Custom ID (Slug) instead of Random Auto-ID
+      const customId = generateSlug(title) || `recipe_${Date.now()}`; // Fallback if title is weird
+      
+      // ✅ Use setDoc with the custom ID
+      await setDoc(doc(db, "recipes", customId), recipeData);
+
       setLoading(false);
-      Alert.alert("Success!", "Recipe saved and sent for verification!", [{ text: "OK", onPress: () => navigation.goBack() }]);
+      Alert.alert("Success!", "Recipe saved successfully!", [{ text: "OK", onPress: () => navigation.goBack() }]);
     
     } catch (error: any) {
       setLoading(false);
@@ -367,7 +380,13 @@ export default function CreateRecipe() {
               ))}
             </View>
 
-            <View className="flex-row justify-between items-center mb-2"><Text className="section-title mb-0">Ingredients</Text><Text className="text-secondaryText text-xs font-bold">{totalCalories} kcal Total</Text></View>
+            <View className="flex-row justify-between items-center mb-2">
+                <Text className="section-title mb-0">Ingredients</Text>
+                <Text className="text-secondaryText text-xs font-bold">
+                    {Math.round(totalCalories / Math.max(1, servings))} kcal / serving
+                </Text>
+            </View>
+
             {ingredients.map((ing) => (
               <View key={ing.id} className="bg-white p-3 mb-2 rounded-xl shadow-sm flex-row items-center justify-between">
                 <View className="flex-row items-center flex-1">
@@ -435,7 +454,7 @@ export default function CreateRecipe() {
                       </View>
                     ))}
 
-                    {/* ✅ Add Timer Input - FIXED HEIGHT h-10 */}
+                    {/* Add Timer Input - FIXED HEIGHT */}
                     {step.timers.length < 3 && (
                       <View className="flex-row items-center bg-white rounded-lg border border-gray-300 overflow-hidden mb-2 h-10">
                         <TextInput 

@@ -32,23 +32,31 @@ export default function HomePage() {
       const fetchedMeals = querySnapshot.docs.map(doc => {
         const data = doc.data();
         
-        // ✅ LOGIC: Use the first category (e.g. "Breakfast") or default to "Recipe"
+        // Logic: Use the first category (e.g. "Breakfast") or default to "Recipe"
         const mealType = (data.categories && data.categories.length > 0) 
           ? data.categories[0] 
           : "Recipe";
 
+        // ✅ CALORIE CALCULATION: Total / Servings
+        const totalCals = Number(data.calories || data.total_calories || 0);
+        const numServings = Number(data.servings) || 1; // Default to 1 to avoid NaN
+        const calsPerServing = Math.round(totalCals / numServings);
+
         return {
           id: doc.id,
           title: data.title || "Untitled Recipe",
-          calories: `${data.total_calories || 0} kcal`,
-          image: data.cover_image || 'https://via.placeholder.com/400',
-          prepTime: data.prep_time || '20 min', // Using the real prep_time from DB
           
-          type: mealType, // <--- Displays "Breakfast", "Dinner", etc.
+          // ✅ FIX: Display Per Serving instead of Total
+          calories: `${calsPerServing} kcal`,
           
+          image: data.image || data.cover_image || 'https://via.placeholder.com/400',
+          prepTime: data.prep_time || '20 min',
+          
+          type: mealType,
           time: 'Recently Added', 
           ingredients: data.ingredients || [], 
-          steps: data.steps || [] 
+          steps: data.steps || [],
+          servings: numServings // Keep track of servings
         };
       });
 

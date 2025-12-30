@@ -7,7 +7,7 @@ import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import "../global.css";
 
-// ✅ 1. HELPER: Fix Firebase URLs (Same logic as RecipeDetails)
+// ✅ 1. HELPER: Fix Firebase URLs (Handles encoded characters)
 const getCleanImageUrl = (url: string | null | undefined) => {
   if (!url || typeof url !== 'string') return null;
   if (url.includes("firebasestorage.googleapis.com") && url.includes("/o/")) {
@@ -28,6 +28,7 @@ export default function CookingMode() {
   const params = useLocalSearchParams();
   const insets = useSafeAreaInsets(); 
 
+  // Parse Recipe Data
   const recipe = params.recipeData ? JSON.parse(params.recipeData as string) : null;
   const steps = recipe?.steps || [];
   
@@ -44,7 +45,6 @@ export default function CookingMode() {
       setActiveTimers(prevTimers => {
         const nextTimers = { ...prevTimers };
         let hasChanges = false;
-        
         Object.keys(nextTimers).forEach(key => {
           const index = parseInt(key);
           if (nextTimers[index] > 0) {
@@ -56,14 +56,10 @@ export default function CookingMode() {
             Alert.alert("Timer Done!", "Your timer has finished.");
           }
         });
-        
         return hasChanges ? nextTimers : prevTimers;
       });
     }, 1000);
-
-    return () => {
-      if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
-    };
+    return () => { if (timerIntervalRef.current) clearInterval(timerIntervalRef.current); };
   }, []);
 
   const toggleTimer = (durationMin: number, index: number) => {
@@ -83,26 +79,22 @@ export default function CookingMode() {
   };
 
   const handleNext = () => {
-    if (currentStepIndex < steps.length - 1) {
-      setCurrentStepIndex(prev => prev + 1);
-    } else {
-      setIsFinished(true);
-    }
+    if (currentStepIndex < steps.length - 1) setCurrentStepIndex(prev => prev + 1);
+    else setIsFinished(true);
   };
 
   const handleBack = () => {
-    if (currentStepIndex > 0) {
-      setCurrentStepIndex(prev => prev - 1);
-    } else {
-      router.back(); 
-    }
+    if (currentStepIndex > 0) setCurrentStepIndex(prev => prev - 1);
+    else router.back(); 
   };
 
   // ---------------------------------------------------------
   // RENDER: BON APPETIT SCREEN (Completion)
   // ---------------------------------------------------------
   if (isFinished) {
-    const finalImage = getCleanImageUrl(recipe.image);
+    // ✅ FIX: Check BOTH possible field names to ensure image loads
+    const rawImage = recipe.image || recipe.cover_image || recipe.cover;
+    const finalImage = getCleanImageUrl(rawImage);
 
     return (
       <View className="flex-1 bg-white" style={{ paddingTop: insets.top }}>
@@ -112,14 +104,22 @@ export default function CookingMode() {
            <View className="items-center px-6 pt-10">
               <Text className="text-secondaryText uppercase tracking-widest text-xs mb-8">All Steps Complete</Text>
               
-              <View className="w-full h-64 rounded-3xl overflow-hidden shadow-lg mb-8 bg-gray-100">
-                 {/* ✅ 2. FIX: Explicit Style Dimensions for Final Image */}
-                 {finalImage && (
+              {/* ✅ FIX: Explicit Height/Width on Container & Image to force rendering */}
+              <View 
+                className="rounded-3xl overflow-hidden shadow-lg mb-8 bg-gray-100"
+                style={{ width: '100%', height: 256 }} // 256px = h-64
+              >
+                 {finalImage ? (
                    <Image 
                      source={{ uri: finalImage }} 
                      style={{ width: '100%', height: '100%' }} 
                      resizeMode="cover"
                    />
+                 ) : (
+                   <View className="flex-1 items-center justify-center bg-gray-200">
+                     <Ionicons name="restaurant" size={48} color="gray" />
+                     <Text className="text-gray-500 mt-2 font-bold">No Image Available</Text>
+                   </View>
                  )}
               </View>
 
@@ -134,12 +134,8 @@ export default function CookingMode() {
               </View>
            </View>
 
-           {/* Home Button with Bottom Inset */}
            <View className="px-6 w-full" style={{ paddingBottom: insets.bottom + 20 }}>
-             <TouchableOpacity 
-               onPress={() => router.navigate('/homePage')} 
-               className="bg-primary h-14 rounded-full items-center justify-center shadow-md"
-             >
+             <TouchableOpacity onPress={() => router.navigate('/homePage')} className="bg-primary h-14 rounded-full items-center justify-center shadow-md">
                <Text className="text-white font-bold text-lg">Back to Home</Text>
              </TouchableOpacity>
            </View>
@@ -162,13 +158,9 @@ export default function CookingMode() {
 
       {/* HEADER */}
       <View className="flex-row items-center justify-between px-6 py-4">
-         <TouchableOpacity onPress={handleBack} className="p-2">
-           <Ionicons name="arrow-back" size={24} color="#333" />
-         </TouchableOpacity>
+         <TouchableOpacity onPress={handleBack} className="p-2"><Ionicons name="arrow-back" size={24} color="#333" /></TouchableOpacity>
          <Text className="font-bodoni text-lg text-primaryText">Cooking Mode</Text>
-         <TouchableOpacity onPress={() => router.back()} className="p-2">
-           <Ionicons name="close" size={24} color="#333" />
-         </TouchableOpacity>
+         <TouchableOpacity onPress={() => router.back()} className="p-2"><Ionicons name="close" size={24} color="#333" /></TouchableOpacity>
       </View>
 
       {/* PROGRESS BAR */}
@@ -182,20 +174,15 @@ export default function CookingMode() {
       <ScrollView contentContainerStyle={{ paddingBottom: 150 }} className="flex-1" showsVerticalScrollIndicator={false}>
         
         <View className="px-6 pt-6">
-          {/* Step Count */}
-          <Text className="text-secondaryText text-xs uppercase font-bold tracking-widest mb-2">
-             Step {currentStepIndex + 1} of {steps.length}
-          </Text>
+          <Text className="text-secondaryText text-xs uppercase font-bold tracking-widest mb-2">Step {currentStepIndex + 1} of {steps.length}</Text>
+          <Text className="text-3xl font-bodoni text-primaryText leading-9 mb-6">{currentStep.title || `Step ${currentStepIndex + 1}`}</Text>
 
-          {/* Title */}
-          <Text className="text-3xl font-bodoni text-primaryText leading-9 mb-6">
-            {currentStep.title || `Step ${currentStepIndex + 1}`}
-          </Text>
-
-          {/* Step Image */}
-          <View className="w-full h-56 bg-gray-50 rounded-2xl overflow-hidden mb-6 shadow-sm border border-gray-100">
+          {/* STEP IMAGE */}
+          <View 
+            className="bg-gray-50 rounded-2xl overflow-hidden mb-6 shadow-sm border border-gray-100"
+            style={{ width: '100%', height: 224 }} // 224px = h-56
+          >
              {stepImageUrl ? (
-               // ✅ 3. FIX: Explicit Style Dimensions for Step Image
                <Image 
                  source={{ uri: stepImageUrl }} 
                  style={{ width: '100%', height: '100%' }}
@@ -209,18 +196,14 @@ export default function CookingMode() {
              )}
           </View>
 
-          {/* Description */}
-          <Text className="text-lg text-gray-700 leading-8 mb-6">
-            {currentStep.description}
-          </Text>
+          <Text className="text-lg text-gray-700 leading-8 mb-6">{currentStep.description}</Text>
 
-          {/* ⏱️ ACTIVE TIMER BUTTONS */}
+          {/* ⏱️ TIMERS */}
           {currentStep.timers && currentStep.timers.length > 0 && (
             <View className="flex-row flex-wrap gap-3 mt-2">
                {currentStep.timers.map((time: number, index: number) => {
                  const remainingSeconds = activeTimers[index];
                  const isRunning = remainingSeconds !== undefined;
-
                  return (
                    <TouchableOpacity 
                      key={index}
@@ -228,43 +211,24 @@ export default function CookingMode() {
                      activeOpacity={0.7}
                      className={`flex-row items-center px-6 py-4 rounded-2xl border shadow-sm ${isRunning ? 'bg-orange-50 border-orange-200' : 'bg-green-50 border-green-200'}`}
                    >
-                     <MaterialCommunityIcons 
-                       name={isRunning ? "timer-sand" : "timer-outline"} 
-                       size={24} 
-                       color={isRunning ? "#F57C00" : "#4CAF50"} 
-                     />
+                     <MaterialCommunityIcons name={isRunning ? "timer-sand" : "timer-outline"} size={24} color={isRunning ? "#F57C00" : "#4CAF50"} />
                      <View className="ml-3">
-                       <Text className={`text-xs font-bold uppercase ${isRunning ? 'text-orange-400' : 'text-green-600'}`}>
-                          {isRunning ? "Time Left" : "Start Timer"}
-                       </Text>
-                       <Text className={`text-lg font-bold ${isRunning ? 'text-orange-800' : 'text-green-800'}`}>
-                         {isRunning ? formatTime(remainingSeconds) : `${time} Min`}
-                       </Text>
+                       <Text className={`text-xs font-bold uppercase ${isRunning ? 'text-orange-400' : 'text-green-600'}`}>{isRunning ? "Time Left" : "Start Timer"}</Text>
+                       <Text className={`text-lg font-bold ${isRunning ? 'text-orange-800' : 'text-green-800'}`}>{isRunning ? formatTime(remainingSeconds) : `${time} Min`}</Text>
                      </View>
                    </TouchableOpacity>
                  );
                })}
             </View>
           )}
-
         </View>
       </ScrollView>
 
-      {/* ✅ BOTTOM BUTTON WITH SAFE AREA PADDING */}
-      <View 
-        className="absolute bottom-0 left-0 right-0 p-6 bg-white border-t border-gray-50"
-        style={{ paddingBottom: insets.bottom + 20 }} 
-      >
-        <TouchableOpacity 
-          onPress={handleNext}
-          className="w-full h-14 bg-primary rounded-full items-center justify-center shadow-lg active:opacity-90"
-        >
-          <Text className="text-white font-bold text-lg">
-             {currentStepIndex === steps.length - 1 ? "Finish Cooking" : "Next Step"}
-          </Text>
+      <View className="absolute bottom-0 left-0 right-0 p-6 bg-white border-t border-gray-50" style={{ paddingBottom: insets.bottom + 20 }}>
+        <TouchableOpacity onPress={handleNext} className="w-full h-14 bg-primary rounded-full items-center justify-center shadow-lg active:opacity-90">
+          <Text className="text-white font-bold text-lg">{currentStepIndex === steps.length - 1 ? "Finish Cooking" : "Next Step"}</Text>
         </TouchableOpacity>
       </View>
-
     </View>
   );
 }

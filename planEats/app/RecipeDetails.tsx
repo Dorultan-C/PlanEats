@@ -25,7 +25,6 @@ const getCleanImageUrl = (url: string | null | undefined) => {
       const encodedPath = rawPath.replace(/\//g, "%2F");
       return `${host}${encodedPath}${queryString ? `?${queryString}` : ''}`;
     } catch {
-      // ✅ FIX: Removed the unused variable (_) entirely
       return url; 
     }
   }
@@ -43,7 +42,6 @@ export default function RecipeDetails() {
     try {
       return params.recipeData ? JSON.parse(params.recipeData as string) : null;
     } catch {
-      // ✅ FIX: Removed the unused variable (_) entirely
       return null;
     }
   }, [params.recipeData]);
@@ -87,12 +85,13 @@ export default function RecipeDetails() {
     }
   };
 
-  // --- IMAGES ---
+  // --- IMAGES LOGIC (FIXED) ---
   const recipeImages = useMemo(() => {
     if (!recipe) return [FALLBACK_IMAGE];
     
     const rawImages = [
-      recipe.image, 
+      // ✅ FIX: Check 'image', 'cover_image', AND 'cover' to ensure the main photo loads
+      recipe.image || recipe.cover_image || recipe.cover, 
       ...(recipe.steps?.map((s: any) => s.image) || [])
     ];
 
